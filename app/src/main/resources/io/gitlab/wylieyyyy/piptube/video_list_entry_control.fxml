@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.image.Image?>
+<?import javafx.scene.image.ImageView?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.VBox?>
+
+<?import io.gitlab.wylieyyyy.piptube.VideoListEntryControl?>
+
+
+<fx:root xmlns:fx="http://javafx.com/fxml/1" type="javafx.scene.layout.StackPane">
+   <children>
+      <Button fx:id="button" maxWidth="Infinity">
+         <prefHeight>
+            <VideoListEntryControl fx:constant="HEIGHT" />
+         </prefHeight>
+      </Button>
+      <HBox mouseTransparent="true">
+         <spacing><VideoListEntryControl fx:constant="SPACING" /></spacing>
+         <padding>
+            <Insets>
+               <topRightBottomLeft>
+                  <VideoListEntryControl fx:constant="SPACING" />
+               </topRightBottomLeft>
+            </Insets>
+         </padding>
+         <children>
+            <ImageView>
+               <image><Image url="@no_thumbnail.png" /></image>
+            </ImageView>
+            <VBox>
+               <Label fx:id="titleLabel" text="Untitled Video" />
+               <Label fx:id="artistLabel" text="Unknown Artist" />
+            </VBox>
+         </children>
+      </HBox>
+   </children>
+</fx:root>

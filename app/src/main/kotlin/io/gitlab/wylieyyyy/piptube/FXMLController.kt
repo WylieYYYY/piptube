@@ -1,20 +1,22 @@
 package io.gitlab.wylieyyyy.piptube
 
-import javafx.event.ActionEvent
 import javafx.event.Event
 import javafx.event.EventHandler
 import javafx.fxml.FXML
 import javafx.scene.control.Button
 import javafx.scene.input.ScrollEvent
 import javafx.scene.layout.StackPane
+import javafx.scene.layout.VBox
 import javafx.scene.media.Media
 import javafx.scene.media.MediaPlayer
 import javafx.scene.media.MediaView
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.MainScope
+import kotlinx.coroutines.async
+import kotlinx.coroutines.cancelChildren
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import org.schabi.newpipe.extractor.NewPipe
+import org.schabi.newpipe.extractor.stream.StreamInfoItem
 import javax.swing.JFrame
 
 class FXMLController {
@@ -23,6 +25,8 @@ class FXMLController {
 
         public const val BASE_HEIGHT = 360
     }
+
+    @FXML private lateinit var videoList: VBox
 
     @FXML private lateinit var videoArea: StackPane
 
@@ -41,8 +45,43 @@ class FXMLController {
     @FXML
     private fun initialize() {
         videoArea.onScroll = handler(::onVideoAreaScrolled)
-        val actionHandler: suspend (ActionEvent) -> Unit = { _ -> onPlayButtonActioned() }
-        playButton.onAction = handler(actionHandler)
+        playButton.onAction = handler { _ -> onPlayButtonActioned() }
+    }
+
+    private fun updateVideo(url: String) {
+        videoView.mediaPlayer?.dispose()
+        videoList.children.clear()
+        scope.coroutineContext.cancelChildren()
+
+        val extractor =
+            scope.async(Dispatchers.IO) {
+                // TODO: ParsingException
+                val streamLinkHandler = youtubeService.streamLHFactory.fromUrl(url)
+                val extractor = youtubeService.getStreamExtractor(streamLinkHandler)
+                // TODO: ExtractionException, IOException
+                extractor.fetchPage()
+                extractor
+            }
+
+        scope.launch {
+            // TODO: ExtractionException
+            val relatedInfo = extractor.await().relatedItems
+            val relatedStreams = relatedInfo?.items?.filterIsInstance<StreamInfoItem>() ?: listOf()
+            videoList.children.addAll(
+                relatedStreams.map {
+                    VideoListEntryControl(it) { updateVideo(it.url) }
+                },
+            )
+        }
+        scope.launch {
+            // TODO: ExtractionException, no video stream
+            val stream = extractor.await().videoStreams?.firstOrNull()!!
+            val media = Media(stream.content)
+            val player = MediaPlayer(media)
+
+            videoView.mediaPlayer = player
+            player.play()
+        }
     }
 
     private suspend fun onVideoAreaScrolled(event: ScrollEvent) {
@@ -61,20 +100,7 @@ class FXMLController {
 
     private suspend fun onPlayButtonActioned() {
         playButton.setVisible(false)
-
-        val extractor =
-            withContext(Dispatchers.IO) {
-                val streamLinkHandler = youtubeService.streamLHFactory.fromId("EdHGrnuCEo4")
-                val extractor = youtubeService.getStreamExtractor(streamLinkHandler)
-
-                extractor.fetchPage()
-                extractor
-            }
-        val media = Media(extractor.getVideoStreams()[0].content)
-        val player = MediaPlayer(media)
-
-        videoView.mediaPlayer = player
-        player.play()
+        updateVideo("https://youtube.com/watch?v=EdHGrnuCEo4")
     }
 
     private fun <T : Event> handler(block: suspend (event: T) -> Unit): EventHandler<T> =
