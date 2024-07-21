@@ -6,6 +6,7 @@
 <?import javafx.scene.image.Image?>
 <?import javafx.scene.image.ImageView?>
 <?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.StackPane?>
 <?import javafx.scene.layout.VBox?>
 
 <?import io.gitlab.wylieyyyy.piptube.VideoListEntryControl?>
@@ -28,9 +29,14 @@
             </Insets>
          </padding>
          <children>
-            <ImageView>
-               <image><Image url="@no_thumbnail.png" /></image>
-            </ImageView>
+            <StackPane alignment="BOTTOM_RIGHT">
+               <children>
+                  <ImageView>
+                     <image><Image url="@no_thumbnail.png" /></image>
+                  </ImageView>
+                  <Label fx:id="durationLabel" text="Unknown Duration" />
+               </children>
+            </StackPane>
             <VBox>
                <Label fx:id="titleLabel" text="Untitled Video" />
                <Label fx:id="artistLabel" text="Unknown Artist" />

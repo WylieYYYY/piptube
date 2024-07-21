@@ -11,6 +11,8 @@ import javafx.scene.layout.StackPane
 import kotlinx.coroutines.MainScope
 import kotlinx.coroutines.launch
 import org.schabi.newpipe.extractor.stream.StreamInfoItem
+import kotlin.time.DurationUnit
+import kotlin.time.toDuration
 
 class VideoListEntryControl(private val streamInfo: StreamInfoItem, private val navigate: () -> Unit) : StackPane() {
     companion object {
@@ -20,6 +22,8 @@ class VideoListEntryControl(private val streamInfo: StreamInfoItem, private val 
     }
 
     @FXML private lateinit var button: Button
+
+    @FXML private lateinit var durationLabel: Label
 
     @FXML private lateinit var titleLabel: Label
 
@@ -37,8 +41,21 @@ class VideoListEntryControl(private val streamInfo: StreamInfoItem, private val 
     @Suppress("UnusedPrivateMember")
     @FXML
     private fun initialize() {
+        if (streamInfo.duration != -1L) {
+            durationLabel.text =
+                streamInfo.duration.toDuration(DurationUnit.SECONDS).toComponents { hours, minutes, seconds, _ ->
+                    val minuteSecondPart =
+                        "${minutes.toString().padStart(2, '0')}:" +
+                            "${seconds.toString().padStart(2, '0')}"
+                    if (hours != 0L) {
+                        "${hours.toString().padStart(2, '0')}:$minuteSecondPart"
+                    } else {
+                        minuteSecondPart
+                    }
+                }
+        }
         titleLabel.text = streamInfo.name
-        artistLabel.text = streamInfo.uploaderName
+        streamInfo.uploaderName?.let { artistLabel.text = it }
         button.onAction = handler { _ -> navigate() }
     }
 

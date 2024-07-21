@@ -4,6 +4,7 @@ import javafx.event.Event
 import javafx.event.EventHandler
 import javafx.fxml.FXML
 import javafx.scene.control.Button
+import javafx.scene.input.MouseButton
 import javafx.scene.input.ScrollEvent
 import javafx.scene.layout.StackPane
 import javafx.scene.layout.VBox
@@ -13,10 +14,12 @@ import javafx.scene.media.MediaView
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.MainScope
 import kotlinx.coroutines.async
-import kotlinx.coroutines.cancelChildren
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import org.schabi.newpipe.extractor.NewPipe
+import org.schabi.newpipe.extractor.stream.StreamExtractor
 import org.schabi.newpipe.extractor.stream.StreamInfoItem
+import java.util.Stack
 import javax.swing.JFrame
 
 class FXMLController {
@@ -40,20 +43,60 @@ class FXMLController {
             NewPipe.init(DownloaderImpl)
             NewPipe.getService("YouTube")
         }
+    private val videoStack = Stack<StreamExtractor>()
 
     @Suppress("UnusedPrivateMember")
     @FXML
     private fun initialize() {
+        videoView.onMouseClicked =
+            handler { event ->
+                if (event.button == MouseButton.SECONDARY) onBack()
+            }
         videoArea.onScroll = handler(::onVideoAreaScrolled)
         playButton.onAction = handler { _ -> onPlayButtonActioned() }
     }
 
-    private fun updateVideo(url: String) {
+    private suspend fun onBack() {
+        val lastVideo = videoStack.pop()
+        if (videoStack.empty()) {
+            videoStack.push(lastVideo)
+        } else {
+            updateVideo(videoStack.peek())
+        }
+    }
+
+    private suspend fun updateVideo(extractor: StreamExtractor) {
         videoView.mediaPlayer?.dispose()
         videoList.children.clear()
-        scope.coroutineContext.cancelChildren()
 
-        val extractor =
+        scope.launch {
+            // TODO: ExtractionException
+            val relatedInfo = extractor.relatedItems
+            val relatedStreams = relatedInfo?.items?.filterIsInstance<StreamInfoItem>() ?: listOf()
+            videoList.children.addAll(
+                relatedStreams.map {
+                    VideoListEntryControl(it) {
+                        scope.launch { videoStack.push(updateVideo(it.url)) }
+                    }
+                },
+            )
+        }
+        scope.launch {
+            // TODO: ExtractionException, no video stream
+            val stream = extractor.videoStreams?.firstOrNull()!!
+            val media = Media(stream.content)
+            val player = MediaPlayer(media)
+
+            videoView.mediaPlayer = player
+            player.play()
+        }
+    }
+
+    private suspend fun updateVideo(url: String): StreamExtractor {
+        videoView.mediaPlayer?.dispose()
+        videoList.children.clear()
+
+        val deferredExtractor =
             scope.async(Dispatchers.IO) {
                 // TODO: ParsingException
                 val streamLinkHandler = youtubeService.streamLHFactory.fromUrl(url)
@@ -63,25 +106,11 @@ class FXMLController {
                 extractor
             }
 
-        scope.launch {
-            // TODO: ExtractionException
-            val relatedInfo = extractor.await().relatedItems
-            val relatedStreams = relatedInfo?.items?.filterIsInstance<StreamInfoItem>() ?: listOf()
-            videoList.children.addAll(
-                relatedStreams.map {
-                    VideoListEntryControl(it) { updateVideo(it.url) }
-                },
-            )
+        scope.launch(Dispatchers.IO) {
+            val extractor = deferredExtractor.await()
+            withContext(Dispatchers.Main) { updateVideo(extractor) }
         }
-        scope.launch {
-            // TODO: ExtractionException, no video stream
-            val stream = extractor.await().videoStreams?.firstOrNull()!!
-            val media = Media(stream.content)
-            val player = MediaPlayer(media)
-
-            videoView.mediaPlayer = player
-            player.play()
-        }
+        return withContext(Dispatchers.IO) { deferredExtractor.await() }
     }
 
     private suspend fun onVideoAreaScrolled(event: ScrollEvent) {
@@ -100,7 +129,7 @@ class FXMLController {
 
     private suspend fun onPlayButtonActioned() {
         playButton.setVisible(false)
-        updateVideo("https://youtube.com/watch?v=EdHGrnuCEo4")
+        videoStack.push(updateVideo("https://youtube.com/watch?v=EdHGrnuCEo4"))
     }
 
     private fun <T : Event> handler(block: suspend (event: T) -> Unit): EventHandler<T> =
