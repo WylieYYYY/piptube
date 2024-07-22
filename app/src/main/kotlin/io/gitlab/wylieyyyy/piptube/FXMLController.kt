@@ -1,11 +1,14 @@
 package io.gitlab.wylieyyyy.piptube
 
+import javafx.beans.value.ChangeListener
 import javafx.event.Event
 import javafx.event.EventHandler
 import javafx.fxml.FXML
+import javafx.fxml.FXMLLoader
+import javafx.scene.Parent
 import javafx.scene.control.Button
+import javafx.scene.control.TextField
 import javafx.scene.input.MouseButton
-import javafx.scene.input.ScrollEvent
 import javafx.scene.layout.StackPane
 import javafx.scene.layout.VBox
 import javafx.scene.media.Media
@@ -17,17 +20,22 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.schabi.newpipe.extractor.NewPipe
+import org.schabi.newpipe.extractor.services.youtube.linkHandler.YoutubeSearchQueryHandlerFactory
 import org.schabi.newpipe.extractor.stream.StreamExtractor
 import org.schabi.newpipe.extractor.stream.StreamInfoItem
 import java.util.Stack
 import javax.swing.JFrame
 
-class FXMLController {
+class FXMLController(private val frame: JFrame) {
     companion object {
         public const val BASE_WIDTH = 640
 
         public const val BASE_HEIGHT = 360
     }
+
+    public val parent: Parent
+
+    @FXML private lateinit var searchField: TextField
 
     @FXML private lateinit var videoList: VBox
 
@@ -44,16 +52,69 @@ class FXMLController {
             NewPipe.getService("YouTube")
         }
     private val videoStack = Stack<StreamExtractor>()
+    private val windowBoundsHandler = WindowBoundsHandler(frame, BASE_HEIGHT)
+
+    init {
+        val loader = FXMLLoader(this::class.java.getResource("scene.fxml"))
+        loader.setController(this)
+        parent = loader.load<Parent>()
+    }
 
     @Suppress("UnusedPrivateMember")
     @FXML
     private fun initialize() {
+        searchField.focusedProperty().addListener(
+            ChangeListener { _, _, newValue ->
+                frame.focusableWindowState = newValue
+
+                if (newValue) {
+                    frame.toFront()
+                    searchField.requestFocus()
+                } else {
+                    frame.setVisible(false)
+                    frame.setVisible(true)
+                }
+            },
+        )
+        searchField.onAction = handler { _ -> onSearchFieldActioned() }
         videoView.onMouseClicked =
             handler { event ->
                 if (event.button == MouseButton.SECONDARY) onBack()
             }
-        videoArea.onScroll = handler(::onVideoAreaScrolled)
+        videoArea.onScroll = handler(windowBoundsHandler::handleScroll)
         playButton.onAction = handler { _ -> onPlayButtonActioned() }
+        windowBoundsHandler.moveToBottomRight()
+    }
+
+    private suspend fun onSearchFieldActioned() {
+        videoList.children.clear()
+        videoArea.requestFocus()
+        // TODO: ParsingException
+        val searchQueryHandler =
+            youtubeService.searchQHFactory.fromQuery(
+                searchField.text,
+                listOf(YoutubeSearchQueryHandlerFactory.VIDEOS),
+                null,
+            )
+        scope.launch(Dispatchers.IO) {
+            val extractor = youtubeService.getSearchExtractor(searchQueryHandler)
+            // TODO: IOException, ExtractionException
+            extractor.fetchPage()
+
+            withContext(Dispatchers.Main) {
+                videoList.children.addAll(
+                    // TODO: IOException, ExtractionException
+                    extractor.getInitialPage().items.filterIsInstance<StreamInfoItem>().map {
+                        VideoListEntryControl(it) {
+                            scope.launch {
+                                windowBoundsHandler.resizeToBase()
+                                videoStack.push(updateVideo(it.url))
+                            }
+                        }
+                    },
+                )
+            }
+        }
     }
 
     private suspend fun onBack() {
@@ -76,7 +137,10 @@ class FXMLController {
             videoList.children.addAll(
                 relatedStreams.map {
                     VideoListEntryControl(it) {
-                        scope.launch { videoStack.push(updateVideo(it.url)) }
+                        scope.launch {
+                            windowBoundsHandler.resizeToBase()
+                            videoStack.push(updateVideo(it.url))
+                        }
                     }
                 },
             )
@@ -111,20 +175,6 @@ class FXMLController {
             withContext(Dispatchers.Main) { updateVideo(extractor) }
         }
         return withContext(Dispatchers.IO) { deferredExtractor.await() }
-    }
-
-    private suspend fun onVideoAreaScrolled(event: ScrollEvent) {
-        val frame = videoView.scene.userData as JFrame
-
-        val oldBounds = frame.bounds
-        val verticalInset = frame.insets.top + frame.insets.bottom
-
-        val height =
-            (oldBounds.height + event.deltaY).toInt()
-                .coerceIn(BASE_HEIGHT + verticalInset, BASE_HEIGHT * 2)
-        val deltaHeight = height - oldBounds.height
-
-        frame.setBounds(oldBounds.x, oldBounds.y - deltaHeight, oldBounds.width, height)
     }
 
     private suspend fun onPlayButtonActioned() {

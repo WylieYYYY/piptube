@@ -2,8 +2,6 @@ package io.gitlab.wylieyyyy.piptube
 
 import javafx.application.Platform
 import javafx.embed.swing.JFXPanel
-import javafx.fxml.FXMLLoader
-import javafx.scene.Parent
 import javafx.scene.Scene
 import javax.swing.JFrame
 import javax.swing.SwingUtilities
@@ -21,12 +19,8 @@ fun main(args: Array<String>) {
                 focusableWindowState = false
             }
         Platform.runLater {
-            val parent = FXMLLoader.load<Parent>({}::class.java.getResource("scene.fxml"))
-            val scene =
-                Scene(parent).apply {
-                    userData = frame
-                }
-            fxPanel.scene = scene
+            val parent = FXMLController(frame).parent
+            fxPanel.scene = Scene(parent)
             frame.setVisible(true)
         }
     }
