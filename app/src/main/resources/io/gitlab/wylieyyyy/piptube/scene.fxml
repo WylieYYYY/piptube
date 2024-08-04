@@ -26,6 +26,15 @@
                <height><FXMLController fx:constant="BASE_HEIGHT" /></height>
             </Rectangle>
             <MediaView fx:id="videoView" />
+            <Rectangle fill="gray">
+               <StackPane.alignment>BOTTOM_CENTER</StackPane.alignment>
+               <width><FXMLController fx:constant="BASE_WIDTH" /></width>
+               <height><FXMLController fx:constant="SEEKBAR_HEIGHT" /></height>
+            </Rectangle>
+            <Rectangle fx:id="progressRectangle" fill="red">
+               <StackPane.alignment>BOTTOM_LEFT</StackPane.alignment>
+               <height><FXMLController fx:constant="SEEKBAR_HEIGHT" /></height>
+            </Rectangle>
             <Button fx:id="playButton" text="Play" />
          </children>
       </StackPane>
