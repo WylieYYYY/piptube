@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.layout.StackPane?>
+<?import javafx.scene.media.MediaView?>
+<?import javafx.scene.shape.Rectangle?>
+
+<?import io.gitlab.wylieyyyy.piptube.FXMLController?>
+<?import io.gitlab.wylieyyyy.piptube.VideoPlayer?>
+
+
+<fx:root xmlns:fx="http://javafx.com/fxml/1" type="javafx.scene.layout.StackPane">
+   <children>
+      <Rectangle fill="black">
+         <StackPane.alignment>CENTER</StackPane.alignment>
+         <width><FXMLController fx:constant="BASE_WIDTH" /></width>
+         <height><FXMLController fx:constant="BASE_HEIGHT" /></height>
+      </Rectangle>
+      <MediaView fx:id="videoView" />
+      <Rectangle fill="gray">
+         <StackPane.alignment>BOTTOM_LEFT</StackPane.alignment>
+         <width><FXMLController fx:constant="BASE_WIDTH" /></width>
+         <height><VideoPlayer fx:constant="SEEKBAR_HEIGHT" /></height>
+      </Rectangle>
+      <Rectangle fx:id="progressRectangle" fill="red">
+         <StackPane.alignment>BOTTOM_LEFT</StackPane.alignment>
+         <height><VideoPlayer fx:constant="SEEKBAR_HEIGHT" /></height>
+      </Rectangle>
+   </children>
+</fx:root>

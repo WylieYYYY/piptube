@@ -2,15 +2,12 @@
 
 <?import javafx.scene.control.ScrollPane?>
 <?import javafx.scene.control.TextField?>
-<?import javafx.scene.layout.StackPane?>
 <?import javafx.scene.layout.VBox?>
-<?import javafx.scene.media.MediaView?>
-<?import javafx.scene.shape.Rectangle?>
 
 <?import io.gitlab.wylieyyyy.piptube.FXMLController?>
 
 
-<VBox xmlns:fx="http://javafx.com/fxml/1"
+<VBox xmlns:fx="http://javafx.com/fxml/1" fx:id="mainBox"
       fillWidth="true" alignment="BOTTOM_CENTER">
    <children>
       <TextField fx:id="searchField" focusTraversable="false" promptText="Search" />
@@ -18,23 +15,5 @@
          <prefHeight><FXMLController fx:constant="BASE_HEIGHT" /></prefHeight>
          <content><VBox fx:id="videoList" fillWidth="true" /></content>
       </ScrollPane>
-      <StackPane fx:id="videoArea" alignment="CENTER">
-         <children>
-            <Rectangle fill="black">
-               <width><FXMLController fx:constant="BASE_WIDTH" /></width>
-               <height><FXMLController fx:constant="BASE_HEIGHT" /></height>
-            </Rectangle>
-            <MediaView fx:id="videoView" />
-            <Rectangle fill="gray">
-               <StackPane.alignment>BOTTOM_CENTER</StackPane.alignment>
-               <width><FXMLController fx:constant="BASE_WIDTH" /></width>
-               <height><FXMLController fx:constant="SEEKBAR_HEIGHT" /></height>
-            </Rectangle>
-            <Rectangle fx:id="progressRectangle" fill="red">
-               <StackPane.alignment>BOTTOM_LEFT</StackPane.alignment>
-               <height><FXMLController fx:constant="SEEKBAR_HEIGHT" /></height>
-            </Rectangle>
-         </children>
-      </StackPane>
    </children>
 </VBox>

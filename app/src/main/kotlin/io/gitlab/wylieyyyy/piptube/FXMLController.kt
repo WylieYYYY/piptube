@@ -7,18 +7,10 @@ import javafx.fxml.FXML
 import javafx.fxml.FXMLLoader
 import javafx.scene.Parent
 import javafx.scene.control.TextField
-import javafx.scene.input.MouseButton
-import javafx.scene.layout.StackPane
 import javafx.scene.layout.VBox
-import javafx.scene.media.Media
-import javafx.scene.media.MediaPlayer
-import javafx.scene.media.MediaView
-import javafx.scene.shape.Rectangle
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.MainScope
 import kotlinx.coroutines.async
-import kotlinx.coroutines.cancelChildren
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.schabi.newpipe.extractor.InfoItem
@@ -34,25 +26,17 @@ class FXMLController(private val frame: JFrame) {
         public const val BASE_WIDTH = 640
 
         public const val BASE_HEIGHT = 360
-
-        public const val SEEKBAR_OFFSET = 20
-
-        public const val SEEKBAR_HEIGHT = 3
-
-        private const val VIDEO_PROGRESS_UPDATE_INTERVAL_MILLISECONDS = 1000L
     }
 
     public val parent: Parent
+
+    @FXML private lateinit var mainBox: VBox
 
     @FXML private lateinit var searchField: TextField
 
     @FXML private lateinit var videoList: VBox
 
-    @FXML private lateinit var videoArea: StackPane
-
-    @FXML private lateinit var videoView: MediaView
-
-    @FXML private lateinit var progressRectangle: Rectangle
+    private lateinit var player: VideoPlayer
 
     private val scope = MainScope()
     private val youtubeService =
@@ -62,7 +46,6 @@ class FXMLController(private val frame: JFrame) {
         }
     private val videoStack = Stack<StreamExtractor>()
     private val windowBoundsHandler = WindowBoundsHandler(frame, BASE_HEIGHT)
-    private var dragOffset = Pair(0, 0)
 
     init {
         val loader = FXMLLoader(this::class.java.getResource("scene.fxml"))
@@ -87,24 +70,16 @@ class FXMLController(private val frame: JFrame) {
             },
         )
         searchField.onAction = handler { _ -> onSearchFieldActioned() }
-        videoView.onMouseClicked =
-            handler { event ->
-                if (event.button == MouseButton.SECONDARY) onBack()
-            }
-        videoArea.onScroll = handler(windowBoundsHandler::handleScroll)
-        videoArea.onMousePressed =
-            handler {
-                dragOffset = Pair(frame.x - it.screenX.toInt(), frame.y - it.screenY.toInt())
-            }
-        videoArea.onMouseDragged =
-            handler {
-                val (xOffset, yOffset) = dragOffset
-                frame.setLocation(it.screenX.toInt() + xOffset, it.screenY.toInt() + yOffset)
-            }
+        player = VideoPlayer(this, frame, windowBoundsHandler, scope)
+        mainBox.children.add(player)
         windowBoundsHandler.moveToBottomRight()
     }
 
-    private suspend fun addToVideoList(items: List<InfoItem>) {
+    public fun clearVideoList() {
+        videoList.children.clear()
+    }
+
+    public suspend fun addToVideoList(items: List<InfoItem>) {
         videoList.children.addAll(
             items.filterIsInstance<StreamInfoItem>().map {
                 VideoListEntryControl(it) {
@@ -119,7 +94,7 @@ class FXMLController(private val frame: JFrame) {
 
     private suspend fun onSearchFieldActioned() {
         videoList.children.clear()
-        videoArea.requestFocus()
+        player.requestFocus()
         // TODO: ParsingException
         val searchQueryHandler =
             youtubeService.searchQHFactory.fromQuery(
@@ -139,50 +114,17 @@ class FXMLController(private val frame: JFrame) {
         }
     }
 
-    private suspend fun onBack() {
+    public suspend fun onBack() {
         val lastVideo = videoStack.pop()
         if (videoStack.empty()) {
             videoStack.push(lastVideo)
         } else {
-            updateVideo(videoStack.peek())
+            player.updateVideo(videoStack.peek())
         }
-    }
-
-    private suspend fun updateVideo(extractor: StreamExtractor) {
-        videoView.mediaPlayer?.dispose()
-        videoList.children.clear()
-        scope.coroutineContext.cancelChildren()
-
-        scope.launch {
-            // TODO: ExtractionException
-            val relatedInfo = extractor.relatedItems?.items ?: listOf()
-            addToVideoList(relatedInfo)
-        }
-        scope.launch {
-            // TODO: ExtractionException, no video stream
-            val stream = extractor.videoStreams?.firstOrNull()!!
-            val media = Media(stream.content)
-            val player = MediaPlayer(media)
-
-            scope.launch {
-                // TODO: ParsingException
-                if (extractor.length > 0) updateVideoProgress(extractor.length)
-            }
-
-            videoView.mediaPlayer = player
-            player.play()
-        }
-    }
-
-    private tailrec suspend fun updateVideoProgress(length: Long) {
-        val time = videoView.mediaPlayer.currentTime.toSeconds()
-        progressRectangle.width = time / length * BASE_WIDTH
-        delay(VIDEO_PROGRESS_UPDATE_INTERVAL_MILLISECONDS)
-        updateVideoProgress(length)
     }
 
     private suspend fun updateVideo(url: String): StreamExtractor {
-        videoView.mediaPlayer?.dispose()
+        player.disposeMedia()
         videoList.children.clear()
 
         val deferredExtractor =
@@ -197,7 +139,7 @@ class FXMLController(private val frame: JFrame) {
 
         scope.launch(Dispatchers.IO) {
             val extractor = deferredExtractor.await()
-            withContext(Dispatchers.Main) { updateVideo(extractor) }
+            withContext(Dispatchers.Main) { player.updateVideo(extractor) }
         }
         return withContext(Dispatchers.IO) { deferredExtractor.await() }
     }
