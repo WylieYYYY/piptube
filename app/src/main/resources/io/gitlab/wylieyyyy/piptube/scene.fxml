@@ -1,19 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
-<?import javafx.scene.control.ScrollPane?>
-<?import javafx.scene.control.TextField?>
 <?import javafx.scene.layout.VBox?>
-
-<?import io.gitlab.wylieyyyy.piptube.FXMLController?>
 
 
 <VBox xmlns:fx="http://javafx.com/fxml/1" fx:id="mainBox"
-      fillWidth="true" alignment="BOTTOM_CENTER">
-   <children>
-      <TextField fx:id="searchField" focusTraversable="false" promptText="Search" />
-      <ScrollPane fitToWidth="true" vbarPolicy="ALWAYS">
-         <prefHeight><FXMLController fx:constant="BASE_HEIGHT" /></prefHeight>
-         <content><VBox fx:id="videoList" fillWidth="true" /></content>
-      </ScrollPane>
-   </children>
-</VBox>
+      fillWidth="true" alignment="BOTTOM_CENTER" />

@@ -1,23 +1,16 @@
 package io.gitlab.wylieyyyy.piptube
 
-import javafx.beans.value.ChangeListener
-import javafx.event.Event
-import javafx.event.EventHandler
 import javafx.fxml.FXML
 import javafx.fxml.FXMLLoader
 import javafx.scene.Parent
-import javafx.scene.control.TextField
 import javafx.scene.layout.VBox
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.MainScope
 import kotlinx.coroutines.async
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import org.schabi.newpipe.extractor.InfoItem
 import org.schabi.newpipe.extractor.NewPipe
-import org.schabi.newpipe.extractor.services.youtube.linkHandler.YoutubeSearchQueryHandlerFactory
 import org.schabi.newpipe.extractor.stream.StreamExtractor
-import org.schabi.newpipe.extractor.stream.StreamInfoItem
 import java.util.Stack
 import javax.swing.JFrame
 
@@ -32,9 +25,7 @@ class FXMLController(private val frame: JFrame) {
 
     @FXML private lateinit var mainBox: VBox
 
-    @FXML private lateinit var searchField: TextField
-
-    @FXML private lateinit var videoList: VBox
+    private lateinit var controlPane: ControlPane
 
     private lateinit var player: VideoPlayer
 
@@ -56,62 +47,14 @@ class FXMLController(private val frame: JFrame) {
     @Suppress("UnusedPrivateMember")
     @FXML
     private fun initialize() {
-        searchField.focusedProperty().addListener(
-            ChangeListener { _, _, newValue ->
-                frame.focusableWindowState = newValue
-
-                if (newValue) {
-                    frame.toFront()
-                    searchField.requestFocus()
-                } else {
-                    frame.setVisible(false)
-                    frame.setVisible(true)
-                }
-            },
-        )
-        searchField.onAction = handler { _ -> onSearchFieldActioned() }
         player = VideoPlayer(this, frame, windowBoundsHandler, scope)
-        mainBox.children.add(player)
+        controlPane = ControlPane(this, player, frame, windowBoundsHandler, scope)
+        mainBox.children.addAll(controlPane, player)
         windowBoundsHandler.moveToBottomRight()
     }
 
-    public fun clearVideoList() {
-        videoList.children.clear()
-    }
-
-    public suspend fun addToVideoList(items: List<InfoItem>) {
-        videoList.children.addAll(
-            items.filterIsInstance<StreamInfoItem>().map {
-                VideoListEntryControl(it) {
-                    scope.launch {
-                        windowBoundsHandler.resizeToBase()
-                        videoStack.push(updateVideo(it.url))
-                    }
-                }
-            },
-        )
-    }
-
-    private suspend fun onSearchFieldActioned() {
-        videoList.children.clear()
-        player.requestFocus()
-        // TODO: ParsingException
-        val searchQueryHandler =
-            youtubeService.searchQHFactory.fromQuery(
-                searchField.text,
-                listOf(YoutubeSearchQueryHandlerFactory.VIDEOS),
-                null,
-            )
-        scope.launch(Dispatchers.IO) {
-            val extractor = youtubeService.getSearchExtractor(searchQueryHandler)
-            // TODO: IOException, ExtractionException
-            extractor.fetchPage()
-
-            withContext(Dispatchers.Main) {
-                // TODO: IOException, ExtractionException
-                addToVideoList(extractor.getInitialPage().items)
-            }
-        }
+    public suspend fun gotoVideoUrl(url: String): StreamExtractor {
+        return videoStack.push(updateVideo(url))
     }
 
     public suspend fun onBack() {
@@ -125,7 +68,7 @@ class FXMLController(private val frame: JFrame) {
 
     private suspend fun updateVideo(url: String): StreamExtractor {
         player.disposeMedia()
-        videoList.children.clear()
+        controlPane.clearVideoList()
 
         val deferredExtractor =
             scope.async(Dispatchers.IO) {
@@ -143,11 +86,4 @@ class FXMLController(private val frame: JFrame) {
         }
         return withContext(Dispatchers.IO) { deferredExtractor.await() }
     }
-
-    private fun <T : Event> handler(block: suspend (event: T) -> Unit): EventHandler<T> =
-        object : EventHandler<T> {
-            override fun handle(event: T) {
-                scope.launch { block(event) }
-            }
-        }
 }

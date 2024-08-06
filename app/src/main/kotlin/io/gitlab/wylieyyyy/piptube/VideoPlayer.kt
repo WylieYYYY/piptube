@@ -66,14 +66,8 @@ class VideoPlayer(
 
     public fun updateVideo(extractor: StreamExtractor) {
         videoView.mediaPlayer?.dispose()
-        controller.clearVideoList()
         scope.coroutineContext.cancelChildren()
 
-        scope.launch {
-            // TODO: ExtractionException
-            val relatedInfo = extractor.relatedItems?.items ?: listOf()
-            controller.addToVideoList(relatedInfo)
-        }
         scope.launch {
             // TODO: ExtractionException, no video stream
             val stream = extractor.videoStreams?.firstOrNull()!!
