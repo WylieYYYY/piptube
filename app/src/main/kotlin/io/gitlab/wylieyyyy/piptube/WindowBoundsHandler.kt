@@ -2,9 +2,17 @@ package io.gitlab.wylieyyyy.piptube
 
 import javafx.scene.input.ScrollEvent
 import javafx.stage.Screen
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.sync.Mutex
 import javax.swing.JFrame
 
 class WindowBoundsHandler(private val frame: JFrame, private val baseHeight: Int) {
+    companion object {
+        private const val BOUNDS_SETTLE_DELAY_MILLISECONDS = 1L
+    }
+
+    private val scrollMutex = Mutex()
+
     public fun moveToBottomRight() {
         val oldBounds = frame.bounds
         val screenBounds = Screen.getPrimary().visualBounds
@@ -14,16 +22,22 @@ class WindowBoundsHandler(private val frame: JFrame, private val baseHeight: Int
         }
     }
 
-    public fun handleScroll(event: ScrollEvent) {
-        val oldBounds = frame.bounds
-        val verticalInset = frame.insets.top + frame.insets.bottom
+    public suspend fun handleScroll(event: ScrollEvent) {
+        if (!scrollMutex.tryLock()) return
+        try {
+            val oldBounds = frame.bounds
+            val verticalInset = frame.insets.top + frame.insets.bottom
 
-        val height =
-            (oldBounds.height + event.deltaY).toInt()
-                .coerceIn(baseHeight + verticalInset, baseHeight * 2)
-        val deltaHeight = height - oldBounds.height
+            val height =
+                (oldBounds.height + event.deltaY).toInt()
+                    .coerceIn(baseHeight + verticalInset, baseHeight * 2)
+            val deltaHeight = height - oldBounds.height
 
-        frame.setBounds(oldBounds.x, oldBounds.y - deltaHeight, oldBounds.width, height)
+            frame.setBounds(oldBounds.x, oldBounds.y - deltaHeight, oldBounds.width, height)
+            delay(BOUNDS_SETTLE_DELAY_MILLISECONDS)
+        } finally {
+            scrollMutex.unlock()
+        }
     }
 
     public fun resizeToBase() {

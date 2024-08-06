@@ -6,7 +6,6 @@ import javafx.event.EventHandler
 import javafx.fxml.FXML
 import javafx.fxml.FXMLLoader
 import javafx.scene.Parent
-import javafx.scene.control.Button
 import javafx.scene.control.TextField
 import javafx.scene.input.MouseButton
 import javafx.scene.layout.StackPane
@@ -22,6 +21,7 @@ import kotlinx.coroutines.cancelChildren
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import org.schabi.newpipe.extractor.InfoItem
 import org.schabi.newpipe.extractor.NewPipe
 import org.schabi.newpipe.extractor.services.youtube.linkHandler.YoutubeSearchQueryHandlerFactory
 import org.schabi.newpipe.extractor.stream.StreamExtractor
@@ -53,8 +53,6 @@ class FXMLController(private val frame: JFrame) {
     @FXML private lateinit var videoView: MediaView
 
     @FXML private lateinit var progressRectangle: Rectangle
-
-    @FXML private lateinit var playButton: Button
 
     private val scope = MainScope()
     private val youtubeService =
@@ -103,8 +101,20 @@ class FXMLController(private val frame: JFrame) {
                 val (xOffset, yOffset) = dragOffset
                 frame.setLocation(it.screenX.toInt() + xOffset, it.screenY.toInt() + yOffset)
             }
-        playButton.onAction = handler { _ -> onPlayButtonActioned() }
         windowBoundsHandler.moveToBottomRight()
+    }
+
+    private suspend fun addToVideoList(items: List<InfoItem>) {
+        videoList.children.addAll(
+            items.filterIsInstance<StreamInfoItem>().map {
+                VideoListEntryControl(it) {
+                    scope.launch {
+                        windowBoundsHandler.resizeToBase()
+                        videoStack.push(updateVideo(it.url))
+                    }
+                }
+            },
+        )
     }
 
     private suspend fun onSearchFieldActioned() {
@@ -123,17 +133,8 @@ class FXMLController(private val frame: JFrame) {
             extractor.fetchPage()
 
             withContext(Dispatchers.Main) {
-                videoList.children.addAll(
-                    // TODO: IOException, ExtractionException
-                    extractor.getInitialPage().items.filterIsInstance<StreamInfoItem>().map {
-                        VideoListEntryControl(it) {
-                            scope.launch {
-                                windowBoundsHandler.resizeToBase()
-                                videoStack.push(updateVideo(it.url))
-                            }
-                        }
-                    },
-                )
+                // TODO: IOException, ExtractionException
+                addToVideoList(extractor.getInitialPage().items)
             }
         }
     }
@@ -154,18 +155,8 @@ class FXMLController(private val frame: JFrame) {
 
         scope.launch {
             // TODO: ExtractionException
-            val relatedInfo = extractor.relatedItems
-            val relatedStreams = relatedInfo?.items?.filterIsInstance<StreamInfoItem>() ?: listOf()
-            videoList.children.addAll(
-                relatedStreams.map {
-                    VideoListEntryControl(it) {
-                        scope.launch {
-                            windowBoundsHandler.resizeToBase()
-                            videoStack.push(updateVideo(it.url))
-                        }
-                    }
-                },
-            )
+            val relatedInfo = extractor.relatedItems?.items ?: listOf()
+            addToVideoList(relatedInfo)
         }
         scope.launch {
             // TODO: ExtractionException, no video stream
@@ -209,11 +200,6 @@ class FXMLController(private val frame: JFrame) {
             withContext(Dispatchers.Main) { updateVideo(extractor) }
         }
         return withContext(Dispatchers.IO) { deferredExtractor.await() }
-    }
-
-    private suspend fun onPlayButtonActioned() {
-        playButton.setVisible(false)
-        videoStack.push(updateVideo("https://youtube.com/watch?v=EdHGrnuCEo4"))
     }
 
     private fun <T : Event> handler(block: suspend (event: T) -> Unit): EventHandler<T> =
