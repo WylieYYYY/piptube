@@ -4,6 +4,7 @@ import javafx.scene.input.ScrollEvent
 import javafx.stage.Screen
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.sync.Mutex
+import java.awt.Point
 import javax.swing.JFrame
 import javax.swing.JWindow
 
@@ -17,10 +18,22 @@ class WindowBoundsHandler(
     }
 
     private val scrollMutex = Mutex()
+    private var controlMoveOffset = Point()
+    private var videoMoveOffset = Point()
+
+    public fun prepareMove(startPoint: Point) {
+        controlMoveOffset = controlFrame.location - startPoint
+        videoMoveOffset = videoWindow.location - controlFrame.location
+    }
+
+    public fun updateMove(currentPoint: Point) {
+        controlFrame.location = currentPoint + controlMoveOffset
+        videoWindow.location = controlFrame.location + videoMoveOffset
+    }
 
     public fun moveToBottomRight() {
         val oldControlRelativeX = controlFrame.location.x - videoWindow.location.x
-        val oldControlRelativeY = controlFrame.location.y - videoWindow.location.y
+        val controlVerticalInset = controlFrame.insets.top + controlFrame.insets.bottom
 
         val oldVideoBounds = videoWindow.bounds
         val screenBounds = Screen.getPrimary().visualBounds
@@ -28,7 +41,7 @@ class WindowBoundsHandler(
         val newVideoX = (screenBounds.minX + screenBounds.width).toInt() - oldVideoBounds.width
         val newVideoY = (screenBounds.minY + screenBounds.height).toInt() - oldVideoBounds.height
 
-        controlFrame.setLocation(newVideoX + oldControlRelativeX, newVideoY + oldControlRelativeY)
+        controlFrame.setLocation(newVideoX + oldControlRelativeX, newVideoY - controlVerticalInset - baseHeight)
         videoWindow.setLocation(newVideoX, newVideoY)
     }
 
@@ -71,3 +84,7 @@ class WindowBoundsHandler(
         )
     }
 }
+
+operator fun Point.plus(other: Point) = Point(x + other.x, y + other.y)
+
+operator fun Point.minus(other: Point) = Point(x - other.x, y - other.y)

@@ -16,11 +16,10 @@ import kotlinx.coroutines.cancelChildren
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import org.schabi.newpipe.extractor.stream.StreamExtractor
-import javax.swing.JWindow
+import java.awt.Point
 
 class VideoPlayer(
     private val controller: FXMLController,
-    private val window: JWindow,
     private val windowBoundsHandler: WindowBoundsHandler,
     private val scope: CoroutineScope,
 ) : StackPane() {
@@ -36,8 +35,6 @@ class VideoPlayer(
 
     @FXML private lateinit var progressRectangle: Rectangle
 
-    private var dragOffset = Pair(0, 0)
-
     init {
         val loader = FXMLLoader(this::class.java.getResource("video_player.fxml"))
         loader.setRoot(this)
@@ -49,18 +46,17 @@ class VideoPlayer(
     @FXML
     private fun initialize() {
         videoView.onMouseClicked =
-            handler { event ->
-                if (event.button == MouseButton.SECONDARY) controller.onBack()
+            handler {
+                if (it.button == MouseButton.SECONDARY) controller.onBack()
             }
         onScroll = handler(windowBoundsHandler::handleScroll)
         onMousePressed =
             handler {
-                dragOffset = Pair(window.x - it.screenX.toInt(), window.y - it.screenY.toInt())
+                windowBoundsHandler.prepareMove(Point(it.screenX.toInt(), it.screenY.toInt()))
             }
         onMouseDragged =
             handler {
-                val (xOffset, yOffset) = dragOffset
-                window.setLocation(it.screenX.toInt() + xOffset, it.screenY.toInt() + yOffset)
+                windowBoundsHandler.updateMove(Point(it.screenX.toInt(), it.screenY.toInt()))
             }
     }
 

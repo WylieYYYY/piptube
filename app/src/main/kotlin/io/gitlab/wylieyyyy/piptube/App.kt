@@ -12,8 +12,9 @@ fun main(args: Array<String>) {
             JFrame("PiPTube").apply {
                 add(JFXPanel())
                 setAlwaysOnTop(true)
+                setUndecorated(true)
                 setResizable(false)
-                setSize(FXMLController.BASE_WIDTH, insets.top + insets.bottom)
+                setSize(FXMLController.BASE_WIDTH, FXMLController.BASE_HEIGHT + insets.top + insets.bottom)
                 defaultCloseOperation = JFrame.EXIT_ON_CLOSE
                 focusableWindowState = false
             }

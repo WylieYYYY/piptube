@@ -2,7 +2,6 @@ package io.gitlab.wylieyyyy.piptube
 
 import javafx.embed.swing.JFXPanel
 import javafx.scene.Scene
-import javafx.stage.Screen
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.MainScope
 import kotlinx.coroutines.async
@@ -13,7 +12,6 @@ import org.schabi.newpipe.extractor.stream.StreamExtractor
 import java.util.Stack
 import javax.swing.JFrame
 import javax.swing.JWindow
-import kotlin.math.ceil
 
 class FXMLController(private val controlFrame: JFrame, private val videoWindow: JWindow) {
     companion object {
@@ -36,7 +34,7 @@ class FXMLController(private val controlFrame: JFrame, private val videoWindow: 
     private val windowBoundsHandler = WindowBoundsHandler(controlFrame, videoWindow, BASE_HEIGHT)
 
     init {
-        player = VideoPlayer(this, videoWindow, windowBoundsHandler, scope)
+        player = VideoPlayer(this, windowBoundsHandler, scope)
         controlPane = ControlPane(this, player, controlFrame, windowBoundsHandler, scope)
 
         for ((container, parent) in mapOf(controlFrame to controlPane, videoWindow to player)) {
@@ -44,13 +42,9 @@ class FXMLController(private val controlFrame: JFrame, private val videoWindow: 
             (components.single() as JFXPanel).scene = Scene(parent)
         }
 
-        val clearY = ceil(Screen.getPrimary().visualBounds.minY).toInt()
-
         controlFrame.setVisible(true)
-        videoWindow.setVisible(true)
-        controlFrame.setLocation(0, clearY)
-        videoWindow.setLocation(0, clearY + controlFrame.insets.top + controlFrame.insets.bottom)
         windowBoundsHandler.moveToBottomRight()
+        videoWindow.setVisible(true)
     }
 
     public suspend fun gotoVideoUrl(url: String): StreamExtractor {
