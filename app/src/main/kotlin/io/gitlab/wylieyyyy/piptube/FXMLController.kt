@@ -1,9 +1,8 @@
 package io.gitlab.wylieyyyy.piptube
 
-import javafx.fxml.FXML
-import javafx.fxml.FXMLLoader
-import javafx.scene.Parent
-import javafx.scene.layout.VBox
+import javafx.embed.swing.JFXPanel
+import javafx.scene.Scene
+import javafx.stage.Screen
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.MainScope
 import kotlinx.coroutines.async
@@ -13,21 +12,19 @@ import org.schabi.newpipe.extractor.NewPipe
 import org.schabi.newpipe.extractor.stream.StreamExtractor
 import java.util.Stack
 import javax.swing.JFrame
+import javax.swing.JWindow
+import kotlin.math.ceil
 
-class FXMLController(private val frame: JFrame) {
+class FXMLController(private val controlFrame: JFrame, private val videoWindow: JWindow) {
     companion object {
         public const val BASE_WIDTH = 640
 
         public const val BASE_HEIGHT = 360
     }
 
-    public val parent: Parent
+    private val controlPane: ControlPane
 
-    @FXML private lateinit var mainBox: VBox
-
-    private lateinit var controlPane: ControlPane
-
-    private lateinit var player: VideoPlayer
+    private val player: VideoPlayer
 
     private val scope = MainScope()
     private val youtubeService =
@@ -36,20 +33,23 @@ class FXMLController(private val frame: JFrame) {
             NewPipe.getService("YouTube")
         }
     private val videoStack = Stack<StreamExtractor>()
-    private val windowBoundsHandler = WindowBoundsHandler(frame, BASE_HEIGHT)
+    private val windowBoundsHandler = WindowBoundsHandler(controlFrame, videoWindow, BASE_HEIGHT)
 
     init {
-        val loader = FXMLLoader(this::class.java.getResource("scene.fxml"))
-        loader.setController(this)
-        parent = loader.load<Parent>()
-    }
+        player = VideoPlayer(this, videoWindow, windowBoundsHandler, scope)
+        controlPane = ControlPane(this, player, controlFrame, windowBoundsHandler, scope)
 
-    @Suppress("UnusedPrivateMember")
-    @FXML
-    private fun initialize() {
-        player = VideoPlayer(this, frame, windowBoundsHandler, scope)
-        controlPane = ControlPane(this, player, frame, windowBoundsHandler, scope)
-        mainBox.children.addAll(controlPane, player)
+        for ((container, parent) in mapOf(controlFrame to controlPane, videoWindow to player)) {
+            val components = container.contentPane.components
+            (components.single() as JFXPanel).scene = Scene(parent)
+        }
+
+        val clearY = ceil(Screen.getPrimary().visualBounds.minY).toInt()
+
+        controlFrame.setVisible(true)
+        videoWindow.setVisible(true)
+        controlFrame.setLocation(0, clearY)
+        videoWindow.setLocation(0, clearY + controlFrame.insets.top + controlFrame.insets.bottom)
         windowBoundsHandler.moveToBottomRight()
     }
 

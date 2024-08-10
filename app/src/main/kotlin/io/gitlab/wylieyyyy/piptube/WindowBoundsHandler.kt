@@ -5,8 +5,13 @@ import javafx.stage.Screen
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.sync.Mutex
 import javax.swing.JFrame
+import javax.swing.JWindow
 
-class WindowBoundsHandler(private val frame: JFrame, private val baseHeight: Int) {
+class WindowBoundsHandler(
+    private val controlFrame: JFrame,
+    private val videoWindow: JWindow,
+    private val baseHeight: Int,
+) {
     companion object {
         private const val BOUNDS_SETTLE_DELAY_MILLISECONDS = 1L
     }
@@ -14,26 +19,38 @@ class WindowBoundsHandler(private val frame: JFrame, private val baseHeight: Int
     private val scrollMutex = Mutex()
 
     public fun moveToBottomRight() {
-        val oldBounds = frame.bounds
+        val oldControlRelativeX = controlFrame.location.x - videoWindow.location.x
+        val oldControlRelativeY = controlFrame.location.y - videoWindow.location.y
+
+        val oldVideoBounds = videoWindow.bounds
         val screenBounds = Screen.getPrimary().visualBounds
 
-        screenBounds.apply {
-            frame.setLocation((minX + width).toInt() - oldBounds.width, (minY + height).toInt() - oldBounds.height)
-        }
+        val newVideoX = (screenBounds.minX + screenBounds.width).toInt() - oldVideoBounds.width
+        val newVideoY = (screenBounds.minY + screenBounds.height).toInt() - oldVideoBounds.height
+
+        controlFrame.setLocation(newVideoX + oldControlRelativeX, newVideoY + oldControlRelativeY)
+        videoWindow.setLocation(newVideoX, newVideoY)
     }
 
     public suspend fun handleScroll(event: ScrollEvent) {
         if (!scrollMutex.tryLock()) return
         try {
-            val oldBounds = frame.bounds
-            val verticalInset = frame.insets.top + frame.insets.bottom
+            val oldControlBounds = controlFrame.bounds
+            val controlVerticalInset = controlFrame.insets.top + controlFrame.insets.bottom
 
-            val height =
-                (oldBounds.height + event.deltaY).toInt()
-                    .coerceIn(baseHeight + verticalInset, baseHeight * 2)
-            val deltaHeight = height - oldBounds.height
+            val newControlHeight =
+                (oldControlBounds.height + event.deltaY).toInt()
+                    .coerceIn(controlVerticalInset, controlVerticalInset + baseHeight)
 
-            frame.setBounds(oldBounds.x, oldBounds.y - deltaHeight, oldBounds.width, height)
+            val controlDeltaHeight = newControlHeight - oldControlBounds.height
+
+            controlFrame.setBounds(
+                oldControlBounds.x,
+                oldControlBounds.y - controlDeltaHeight,
+                oldControlBounds.width,
+                newControlHeight,
+            )
+
             delay(BOUNDS_SETTLE_DELAY_MILLISECONDS)
         } finally {
             scrollMutex.unlock()
@@ -41,10 +58,16 @@ class WindowBoundsHandler(private val frame: JFrame, private val baseHeight: Int
     }
 
     public fun resizeToBase() {
-        val oldBounds = frame.bounds
-        val verticalInset = frame.insets.top + frame.insets.bottom
+        val oldControlBounds = controlFrame.bounds
+        val controlVerticalInset = controlFrame.insets.top + controlFrame.insets.bottom
 
-        val deltaY = oldBounds.height - (baseHeight + verticalInset)
-        frame.setBounds(oldBounds.x, oldBounds.y + deltaY, oldBounds.width, baseHeight + verticalInset)
+        val controlDeltaY = oldControlBounds.height - controlVerticalInset
+
+        controlFrame.setBounds(
+            oldControlBounds.x,
+            oldControlBounds.y + controlDeltaY,
+            oldControlBounds.width,
+            controlVerticalInset,
+        )
     }
 }

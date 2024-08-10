@@ -16,11 +16,11 @@ import kotlinx.coroutines.cancelChildren
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import org.schabi.newpipe.extractor.stream.StreamExtractor
-import javax.swing.JFrame
+import javax.swing.JWindow
 
 class VideoPlayer(
     private val controller: FXMLController,
-    private val frame: JFrame,
+    private val window: JWindow,
     private val windowBoundsHandler: WindowBoundsHandler,
     private val scope: CoroutineScope,
 ) : StackPane() {
@@ -55,12 +55,12 @@ class VideoPlayer(
         onScroll = handler(windowBoundsHandler::handleScroll)
         onMousePressed =
             handler {
-                dragOffset = Pair(frame.x - it.screenX.toInt(), frame.y - it.screenY.toInt())
+                dragOffset = Pair(window.x - it.screenX.toInt(), window.y - it.screenY.toInt())
             }
         onMouseDragged =
             handler {
                 val (xOffset, yOffset) = dragOffset
-                frame.setLocation(it.screenX.toInt() + xOffset, it.screenY.toInt() + yOffset)
+                window.setLocation(it.screenX.toInt() + xOffset, it.screenY.toInt() + yOffset)
             }
     }
 

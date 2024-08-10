@@ -2,26 +2,31 @@ package io.gitlab.wylieyyyy.piptube
 
 import javafx.application.Platform
 import javafx.embed.swing.JFXPanel
-import javafx.scene.Scene
 import javax.swing.JFrame
+import javax.swing.JWindow
 import javax.swing.SwingUtilities
 
 fun main(args: Array<String>) {
     SwingUtilities.invokeLater {
-        val fxPanel = JFXPanel()
-        val frame =
+        val controlFrame =
             JFrame("PiPTube").apply {
-                add(fxPanel)
+                add(JFXPanel())
                 setAlwaysOnTop(true)
                 setResizable(false)
-                setSize(FXMLController.BASE_WIDTH, FXMLController.BASE_HEIGHT * 2)
+                setSize(FXMLController.BASE_WIDTH, insets.top + insets.bottom)
                 defaultCloseOperation = JFrame.EXIT_ON_CLOSE
                 focusableWindowState = false
             }
+        val videoWindow =
+            JWindow().apply {
+                add(JFXPanel())
+                setAlwaysOnTop(true)
+                setSize(FXMLController.BASE_WIDTH, FXMLController.BASE_HEIGHT)
+                focusableWindowState = false
+            }
+
         Platform.runLater {
-            val parent = FXMLController(frame).parent
-            fxPanel.scene = Scene(parent)
-            frame.setVisible(true)
+            FXMLController(controlFrame, videoWindow)
         }
     }
 }
