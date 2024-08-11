@@ -67,7 +67,9 @@ class VideoPlayer(
         scope.launch {
             // TODO: ExtractionException, no video stream
             val stream = extractor.videoStreams?.firstOrNull()!!
+            // TODO: IllegalArgumentException, UnsupportedOperationException, MediaException
             val media = Media(stream.content)
+            // TODO: MediaException
             val player = MediaPlayer(media)
 
             scope.launch {

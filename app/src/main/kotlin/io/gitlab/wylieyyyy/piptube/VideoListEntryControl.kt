@@ -7,10 +7,18 @@ import javafx.fxml.FXMLLoader
 import javafx.scene.Parent
 import javafx.scene.control.Button
 import javafx.scene.control.Label
+import javafx.scene.image.Image
+import javafx.scene.image.ImageView
 import javafx.scene.layout.StackPane
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.MainScope
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import org.schabi.newpipe.extractor.stream.StreamInfoItem
+import java.io.ByteArrayInputStream
+import java.io.ByteArrayOutputStream
+import java.net.URI
+import javax.imageio.ImageIO
 import kotlin.time.DurationUnit
 import kotlin.time.toDuration
 
@@ -19,9 +27,15 @@ class VideoListEntryControl(private val streamInfo: StreamInfoItem, private val 
         public const val HEIGHT = 100
 
         public const val SPACING = HEIGHT / 10
+
+        public const val THUMBNAIL_WIDTH = 160
+
+        public const val THUMBNAIL_HEIGHT = 90
     }
 
     @FXML private lateinit var button: Button
+
+    @FXML private lateinit var thumbnailView: ImageView
 
     @FXML private lateinit var durationLabel: Label
 
@@ -54,9 +68,22 @@ class VideoListEntryControl(private val streamInfo: StreamInfoItem, private val 
                     }
                 }
         }
+        streamInfo.thumbnails.firstOrNull()?.also {
+            scope.launch(Dispatchers.IO) {
+                // TODO: IOException, URISyntaxException, MalformedURLException
+                val bufferedImage = ImageIO.read(URI(it.url).toURL())
+                val byteArrayOutputStream = ByteArrayOutputStream()
+                // TODO: IOException
+                if (!ImageIO.write(bufferedImage, "JPEG", byteArrayOutputStream)) return@launch
+                withContext(Dispatchers.Main) {
+                    // TODO: IllegalArgumentException
+                    thumbnailView.image = Image(ByteArrayInputStream(byteArrayOutputStream.toByteArray()))
+                }
+            }
+        }
         titleLabel.text = streamInfo.name
         streamInfo.uploaderName?.let { artistLabel.text = it }
-        button.onAction = handler { _ -> navigate() }
+        button.onAction = handler { navigate() }
     }
 
     private fun <T : Event> handler(block: suspend (event: T) -> Unit): EventHandler<T> =

@@ -31,7 +31,9 @@
          <children>
             <StackPane alignment="BOTTOM_RIGHT">
                <children>
-                  <ImageView>
+                  <ImageView fx:id="thumbnailView" preserveRatio="true">
+                     <fitWidth><VideoListEntryControl fx:constant="THUMBNAIL_WIDTH" /></fitWidth>
+                     <fitHeight><VideoListEntryControl fx:constant="THUMBNAIL_HEIGHT" /></fitHeight>
                      <image><Image url="@no_thumbnail.png" /></image>
                   </ImageView>
                   <Label fx:id="durationLabel" text="Unknown Duration" />

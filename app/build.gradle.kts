@@ -12,6 +12,8 @@ repositories {
 dependencies {
     implementation("com.github.TeamNewPipe:NewPipeExtractor:v0.24.2")
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
+    implementation("com.twelvemonkeys.imageio:imageio-jpeg:3.11.0")
+    implementation("com.twelvemonkeys.imageio:imageio-webp:3.11.0")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.9.0-RC")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-javafx:1.9.0-RC")
 
