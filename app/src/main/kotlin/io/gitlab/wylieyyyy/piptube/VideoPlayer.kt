@@ -6,11 +6,13 @@ import javafx.fxml.FXML
 import javafx.fxml.FXMLLoader
 import javafx.scene.Parent
 import javafx.scene.input.MouseButton
+import javafx.scene.input.MouseEvent
 import javafx.scene.layout.StackPane
 import javafx.scene.media.Media
 import javafx.scene.media.MediaPlayer
 import javafx.scene.media.MediaView
 import javafx.scene.shape.Rectangle
+import javafx.util.Duration
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.cancelChildren
 import kotlinx.coroutines.delay
@@ -26,12 +28,16 @@ class VideoPlayer(
     companion object {
         public const val SEEKBAR_OFFSET = 20
 
+        public const val SEEKBAR_WIDTH = FXMLController.BASE_WIDTH
+
         public const val SEEKBAR_HEIGHT = 3
 
         private const val VIDEO_PROGRESS_UPDATE_INTERVAL_MILLISECONDS = 1000L
     }
 
     @FXML private lateinit var videoView: MediaView
+
+    @FXML private lateinit var progressBackgroundRectangle: Rectangle
 
     @FXML private lateinit var progressRectangle: Rectangle
 
@@ -49,6 +55,8 @@ class VideoPlayer(
             handler {
                 if (it.button == MouseButton.SECONDARY) controller.onBack()
             }
+        progressBackgroundRectangle.onMouseClicked = handler(::handleSeekbarClicked)
+        progressRectangle.onMouseClicked = handler(::handleSeekbarClicked)
         onScroll = handler(windowBoundsHandler::handleScroll)
         onMousePressed =
             handler {
@@ -74,7 +82,7 @@ class VideoPlayer(
 
             scope.launch {
                 // TODO: ParsingException
-                if (extractor.length > 0) updateVideoProgress(extractor.length)
+                if (extractor.length > 0) updateVideoProgress(true)
             }
 
             videoView.mediaPlayer = player
@@ -86,11 +94,21 @@ class VideoPlayer(
         videoView.mediaPlayer?.dispose()
     }
 
-    private tailrec suspend fun updateVideoProgress(length: Long) {
-        val time = videoView.mediaPlayer.currentTime.toSeconds()
-        progressRectangle.width = time / length * FXMLController.BASE_WIDTH
-        delay(VIDEO_PROGRESS_UPDATE_INTERVAL_MILLISECONDS)
-        updateVideoProgress(length)
+    private tailrec suspend fun updateVideoProgress(repeat: Boolean) {
+        progressRectangle.width =
+            videoView.mediaPlayer.run {
+                currentTime.toMillis() / totalDuration.toMillis() * SEEKBAR_WIDTH
+            }
+        if (repeat) {
+            delay(VIDEO_PROGRESS_UPDATE_INTERVAL_MILLISECONDS)
+            updateVideoProgress(repeat)
+        }
+    }
+
+    private suspend fun handleSeekbarClicked(event: MouseEvent) {
+        val duration = videoView.mediaPlayer.totalDuration * event.x / SEEKBAR_WIDTH.toDouble()
+        videoView.mediaPlayer.seek(duration)
+        updateVideoProgress(false)
     }
 
     private fun <T : Event> handler(block: suspend (event: T) -> Unit): EventHandler<T> =
@@ -100,3 +118,7 @@ class VideoPlayer(
             }
         }
 }
+
+operator fun Duration.times(other: Double): Duration = multiply(other)
+
+operator fun Duration.div(other: Double): Duration = divide(other)

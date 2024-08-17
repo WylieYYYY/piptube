@@ -1,5 +1,8 @@
+import com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar
+
 plugins {
     kotlin("jvm") version "2.0.0"
+    id("com.gradleup.shadow") version "8.3.0"
     id("org.openjfx.javafxplugin") version "0.1.0"
     application
 }
@@ -36,6 +39,17 @@ javafx {
 
 application {
     mainClass = "io.gitlab.wylieyyyy.piptube.AppKt"
+}
+
+tasks.withType<ShadowJar>().configureEach {
+    mergeServiceFiles()
+}
+
+tasks.withType<Jar>().configureEach {
+    manifest {
+        attributes["Main-Class"] = "io.gitlab.wylieyyyy.piptube.AppKt"
+    }
+    configurations["runtimeClasspath"].forEach { from(zipTree(it)) }
 }
 
 tasks.named<Test>("test") {
