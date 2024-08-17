@@ -1,11 +1,13 @@
 package io.gitlab.wylieyyyy.piptube
 
+import javafx.beans.Observable
 import javafx.beans.value.ChangeListener
 import javafx.event.Event
 import javafx.event.EventHandler
 import javafx.fxml.FXML
 import javafx.fxml.FXMLLoader
 import javafx.scene.Parent
+import javafx.scene.control.ProgressIndicator
 import javafx.scene.control.TextField
 import javafx.scene.layout.VBox
 import kotlinx.coroutines.CoroutineScope
@@ -20,7 +22,6 @@ import javax.swing.JFrame
 
 class ControlPane(
     private val controller: FXMLController,
-    private val player: VideoPlayer,
     private val frame: JFrame,
     private val windowBoundsHandler: WindowBoundsHandler,
     private val scope: CoroutineScope,
@@ -28,6 +29,8 @@ class ControlPane(
     @FXML private lateinit var searchField: TextField
 
     @FXML private lateinit var videoList: VBox
+
+    @FXML private lateinit var progress: ProgressIndicator
 
     private val youtubeService =
         run {
@@ -58,7 +61,10 @@ class ControlPane(
                 }
             },
         )
-        searchField.onAction = handler { _ -> onSearchFieldActioned() }
+        searchField.onAction = handler { _ -> handleSearchFieldActioned() }
+        videoList.children.addListener { _: Observable ->
+            progress.setVisible(videoList.children.isEmpty())
+        }
     }
 
     public fun clearVideoList() {
@@ -84,9 +90,11 @@ class ControlPane(
         )
     }
 
-    private suspend fun onSearchFieldActioned() {
+    private suspend fun handleSearchFieldActioned() {
         videoList.children.clear()
-        player.requestFocus()
+        progress.setVisible(true)
+        controller.player.requestFocus()
+
         // TODO: ParsingException
         val searchQueryHandler =
             youtubeService.searchQHFactory.fromQuery(

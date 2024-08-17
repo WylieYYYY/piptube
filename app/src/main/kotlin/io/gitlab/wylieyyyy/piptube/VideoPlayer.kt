@@ -5,6 +5,7 @@ import javafx.event.EventHandler
 import javafx.fxml.FXML
 import javafx.fxml.FXMLLoader
 import javafx.scene.Parent
+import javafx.scene.control.ProgressIndicator
 import javafx.scene.input.MouseButton
 import javafx.scene.input.MouseEvent
 import javafx.scene.layout.StackPane
@@ -14,13 +15,18 @@ import javafx.scene.media.MediaView
 import javafx.scene.shape.Rectangle
 import javafx.util.Duration
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
 import kotlinx.coroutines.cancelChildren
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import org.schabi.newpipe.extractor.StreamingService
 import org.schabi.newpipe.extractor.stream.StreamExtractor
 import java.awt.Point
 
 class VideoPlayer(
+    private val streamingService: StreamingService,
     private val controller: FXMLController,
     private val windowBoundsHandler: WindowBoundsHandler,
     private val scope: CoroutineScope,
@@ -40,6 +46,8 @@ class VideoPlayer(
     @FXML private lateinit var progressBackgroundRectangle: Rectangle
 
     @FXML private lateinit var progressRectangle: Rectangle
+
+    @FXML private lateinit var progress: ProgressIndicator
 
     init {
         val loader = FXMLLoader(this::class.java.getResource("video_player.fxml"))
@@ -68,8 +76,31 @@ class VideoPlayer(
             }
     }
 
+    public suspend fun updateVideo(url: String): StreamExtractor {
+        disposeMedia()
+        progress.setVisible(true)
+        controller.controlPane.clearVideoList()
+
+        val deferredExtractor =
+            scope.async(Dispatchers.IO) {
+                // TODO: ParsingException
+                val streamLinkHandler = streamingService.streamLHFactory.fromUrl(url)
+                val extractor = streamingService.getStreamExtractor(streamLinkHandler)
+                // TODO: ExtractionException, IOException
+                extractor.fetchPage()
+                extractor
+            }
+
+        scope.launch(Dispatchers.IO) {
+            val extractor = deferredExtractor.await()
+            withContext(Dispatchers.Main) { updateVideo(extractor) }
+        }
+        return withContext(Dispatchers.IO) { deferredExtractor.await() }
+    }
+
     public fun updateVideo(extractor: StreamExtractor) {
         videoView.mediaPlayer?.dispose()
+        progress.setVisible(true)
         scope.coroutineContext.cancelChildren()
 
         scope.launch {
@@ -84,6 +115,15 @@ class VideoPlayer(
                 // TODO: ParsingException
                 if (extractor.length > 0) updateVideoProgress(true)
             }
+
+            player.onStalled =
+                object : Runnable {
+                    override fun run() = progress.setVisible(true)
+                }
+            player.onPlaying =
+                object : Runnable {
+                    override fun run() = progress.setVisible(false)
+                }
 
             videoView.mediaPlayer = player
             player.play()
@@ -106,9 +146,11 @@ class VideoPlayer(
     }
 
     private suspend fun handleSeekbarClicked(event: MouseEvent) {
-        val duration = videoView.mediaPlayer.totalDuration * event.x / SEEKBAR_WIDTH.toDouble()
-        videoView.mediaPlayer.seek(duration)
-        updateVideoProgress(false)
+        videoView.mediaPlayer?.run {
+            val duration = totalDuration * event.x / SEEKBAR_WIDTH.toDouble()
+            seek(duration)
+            updateVideoProgress(false)
+        }
     }
 
     private fun <T : Event> handler(block: suspend (event: T) -> Unit): EventHandler<T> =

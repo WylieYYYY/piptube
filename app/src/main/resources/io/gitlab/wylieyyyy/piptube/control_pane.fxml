@@ -1,7 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
+<?import javafx.scene.control.ProgressIndicator?>
 <?import javafx.scene.control.ScrollPane?>
 <?import javafx.scene.control.TextField?>
+<?import javafx.scene.layout.StackPane?>
 <?import javafx.scene.layout.VBox?>
 
 <?import io.gitlab.wylieyyyy.piptube.FXMLController?>
@@ -12,9 +14,16 @@
       fillWidth="true">
    <children>
       <TextField fx:id="searchField" focusTraversable="false" promptText="Search" />
-      <ScrollPane fitToWidth="true" vbarPolicy="ALWAYS">
-         <prefHeight><FXMLController fx:constant="BASE_HEIGHT" /></prefHeight>
-         <content><VBox fx:id="videoList" fillWidth="true" /></content>
-      </ScrollPane>
+      <StackPane>
+         <children>
+            <ScrollPane fitToWidth="true" vbarPolicy="ALWAYS">
+               <prefHeight><FXMLController fx:constant="BASE_HEIGHT" /></prefHeight>
+               <content><VBox fx:id="videoList" fillWidth="true" /></content>
+            </ScrollPane>
+            <ProgressIndicator fx:id="progress" visible="false">
+               <progress><ProgressIndicator fx:constant="INDETERMINATE_PROGRESS" /></progress>
+            </ProgressIndicator>
+         </children>
+      </StackPane>
    </children>
 </fx:root>

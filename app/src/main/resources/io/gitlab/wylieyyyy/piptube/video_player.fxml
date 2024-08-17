@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
+<?import javafx.scene.control.ProgressIndicator?>
 <?import javafx.scene.layout.StackPane?>
 <?import javafx.scene.media.MediaView?>
 <?import javafx.scene.shape.Rectangle?>
@@ -25,5 +26,8 @@
          <StackPane.alignment>BOTTOM_LEFT</StackPane.alignment>
          <height><VideoPlayer fx:constant="SEEKBAR_HEIGHT" /></height>
       </Rectangle>
+      <ProgressIndicator fx:id="progress" visible="false">
+         <progress><ProgressIndicator fx:constant="INDETERMINATE_PROGRESS" /></progress>
+      </ProgressIndicator>
    </children>
 </fx:root>
