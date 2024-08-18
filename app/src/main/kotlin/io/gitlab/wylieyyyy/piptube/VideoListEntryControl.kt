@@ -55,6 +55,8 @@ class VideoListEntryControl(private val streamInfo: StreamInfoItem, private val 
     @Suppress("UnusedPrivateMember")
     @FXML
     private fun initialize() {
+        stylesheets.add(this::class.java.getResource("video_list_entry_control.css").toString())
+
         if (streamInfo.duration != -1L) {
             durationLabel.text =
                 streamInfo.duration.toDuration(DurationUnit.SECONDS).toComponents { hours, minutes, seconds, _ ->

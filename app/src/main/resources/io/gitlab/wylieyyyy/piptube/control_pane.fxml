@@ -2,11 +2,14 @@
 
 <?import javafx.scene.control.ProgressIndicator?>
 <?import javafx.scene.control.ScrollPane?>
+<?import javafx.scene.control.Tab?>
+<?import javafx.scene.control.TabPane?>
 <?import javafx.scene.control.TextField?>
+<?import javafx.scene.layout.HBox?>
 <?import javafx.scene.layout.StackPane?>
 <?import javafx.scene.layout.VBox?>
 
-<?import io.gitlab.wylieyyyy.piptube.FXMLController?>
+<?import javafx.scene.layout.Region?>
 
 
 <fx:root xmlns:fx="http://javafx.com/fxml/1"
@@ -14,16 +17,26 @@
       fillWidth="true">
    <children>
       <TextField fx:id="searchField" focusTraversable="false" promptText="Search" />
-      <StackPane>
+      <HBox>
+         <VBox.vgrow>ALWAYS</VBox.vgrow>
          <children>
-            <ScrollPane fitToWidth="true" vbarPolicy="ALWAYS">
-               <prefHeight><FXMLController fx:constant="BASE_HEIGHT" /></prefHeight>
-               <content><VBox fx:id="videoList" fillWidth="true" /></content>
-            </ScrollPane>
-            <ProgressIndicator fx:id="progress" visible="false">
-               <progress><ProgressIndicator fx:constant="INDETERMINATE_PROGRESS" /></progress>
-            </ProgressIndicator>
+            <TabPane side="LEFT" tabClosingPolicy="UNAVAILABLE">
+               <minWidth><Region fx:constant="USE_PREF_SIZE" /></minWidth>
+               <maxWidth><Region fx:constant="USE_PREF_SIZE" /></maxWidth>
+               <tabs><Tab text="Results" /></tabs>
+            </TabPane>
+            <StackPane>
+               <HBox.hgrow>ALWAYS</HBox.hgrow>
+               <children>
+                  <ScrollPane fitToWidth="true" vbarPolicy="ALWAYS">
+                     <content><VBox fx:id="videoList" /></content>
+                  </ScrollPane>
+                  <ProgressIndicator fx:id="progress" visible="false">
+                     <progress><ProgressIndicator fx:constant="INDETERMINATE_PROGRESS" /></progress>
+                  </ProgressIndicator>
+               </children>
+            </StackPane>
          </children>
-      </StackPane>
+      </HBox>
    </children>
 </fx:root>

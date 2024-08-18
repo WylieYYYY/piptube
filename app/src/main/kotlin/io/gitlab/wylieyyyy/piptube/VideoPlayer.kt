@@ -5,6 +5,7 @@ import javafx.event.EventHandler
 import javafx.fxml.FXML
 import javafx.fxml.FXMLLoader
 import javafx.scene.Parent
+import javafx.scene.control.Label
 import javafx.scene.control.ProgressIndicator
 import javafx.scene.input.MouseButton
 import javafx.scene.input.MouseEvent
@@ -46,6 +47,8 @@ class VideoPlayer(
     @FXML private lateinit var progressBackgroundRectangle: Rectangle
 
     @FXML private lateinit var progressRectangle: Rectangle
+
+    @FXML private lateinit var titleLabel: Label
 
     @FXML private lateinit var progress: ProgressIndicator
 
@@ -102,6 +105,9 @@ class VideoPlayer(
         videoView.mediaPlayer?.dispose()
         progress.setVisible(true)
         scope.coroutineContext.cancelChildren()
+
+        // TODO: ParsingException
+        titleLabel.text = extractor.name
 
         scope.launch {
             // TODO: ExtractionException, no video stream

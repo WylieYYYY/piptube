@@ -1,7 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
+<?import javafx.scene.control.Label?>
 <?import javafx.scene.control.ProgressIndicator?>
 <?import javafx.scene.layout.StackPane?>
+<?import javafx.scene.layout.VBox?>
 <?import javafx.scene.media.MediaView?>
 <?import javafx.scene.shape.Rectangle?>
 
@@ -17,15 +19,22 @@
          <height><FXMLController fx:constant="BASE_HEIGHT" /></height>
       </Rectangle>
       <MediaView fx:id="videoView" />
-      <Rectangle fx:id="progressBackgroundRectangle" fill="gray">
-         <StackPane.alignment>BOTTOM_LEFT</StackPane.alignment>
-         <width><VideoPlayer fx:constant="SEEKBAR_WIDTH" /></width>
-         <height><VideoPlayer fx:constant="SEEKBAR_HEIGHT" /></height>
-      </Rectangle>
-      <Rectangle fx:id="progressRectangle" fill="red">
-         <StackPane.alignment>BOTTOM_LEFT</StackPane.alignment>
-         <height><VideoPlayer fx:constant="SEEKBAR_HEIGHT" /></height>
-      </Rectangle>
+      <VBox alignment="BOTTOM_LEFT">
+         <children>
+            <StackPane alignment="BOTTOM_LEFT">
+               <children>
+                  <Rectangle fx:id="progressBackgroundRectangle" fill="gray">
+                     <width><VideoPlayer fx:constant="SEEKBAR_WIDTH" /></width>
+                     <height><VideoPlayer fx:constant="SEEKBAR_HEIGHT" /></height>
+                  </Rectangle>
+                  <Rectangle fx:id="progressRectangle" fill="red">
+                     <height><VideoPlayer fx:constant="SEEKBAR_HEIGHT" /></height>
+                  </Rectangle>
+               </children>
+            </StackPane>
+            <Label fx:id="titleLabel" text="Untitled Video" />
+         </children>
+      </VBox>
       <ProgressIndicator fx:id="progress" visible="false">
          <progress><ProgressIndicator fx:constant="INDETERMINATE_PROGRESS" /></progress>
       </ProgressIndicator>

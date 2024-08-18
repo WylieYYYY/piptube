@@ -74,18 +74,15 @@ class ControlPane(
     private suspend fun addToVideoList(items: List<InfoItem>) {
         videoList.children.addAll(
             items.filterIsInstance<StreamInfoItem>().map {
-                val entryControl =
-                    VideoListEntryControl(it) {
-                        scope.launch {
-                            windowBoundsHandler.resizeToBase()
-                            videoList.children.clear()
-                            // TODO: ExtractionException
-                            val relatedInfo = controller.gotoVideoUrl(it.url).relatedItems?.items ?: listOf()
-                            addToVideoList(relatedInfo)
-                        }
+                VideoListEntryControl(it) {
+                    scope.launch {
+                        windowBoundsHandler.resizeToBase()
+                        videoList.children.clear()
+                        // TODO: ExtractionException
+                        val relatedInfo = controller.gotoVideoUrl(it.url).relatedItems?.items ?: listOf()
+                        addToVideoList(relatedInfo)
                     }
-                entryControl.stylesheets.add(this::class.java.getResource("styles.css").toString())
-                entryControl
+                }
             },
         )
     }

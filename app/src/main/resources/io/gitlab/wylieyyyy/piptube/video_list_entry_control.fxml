@@ -15,17 +15,13 @@
 <fx:root xmlns:fx="http://javafx.com/fxml/1" type="javafx.scene.layout.StackPane">
    <children>
       <Button fx:id="button" maxWidth="Infinity">
-         <prefHeight>
-            <VideoListEntryControl fx:constant="HEIGHT" />
-         </prefHeight>
+         <prefHeight><VideoListEntryControl fx:constant="HEIGHT" /></prefHeight>
       </Button>
       <HBox mouseTransparent="true">
          <spacing><VideoListEntryControl fx:constant="SPACING" /></spacing>
          <padding>
             <Insets>
-               <topRightBottomLeft>
-                  <VideoListEntryControl fx:constant="SPACING" />
-               </topRightBottomLeft>
+               <topRightBottomLeft><VideoListEntryControl fx:constant="SPACING" /></topRightBottomLeft>
             </Insets>
          </padding>
          <children>
