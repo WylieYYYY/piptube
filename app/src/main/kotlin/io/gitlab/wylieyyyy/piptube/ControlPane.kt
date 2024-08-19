@@ -71,7 +71,7 @@ class ControlPane(
         videoList.children.clear()
     }
 
-    private suspend fun addToVideoList(items: List<InfoItem>) {
+    public suspend fun addToVideoList(items: List<InfoItem>) {
         videoList.children.addAll(
             items.filterIsInstance<StreamInfoItem>().map {
                 VideoListEntryControl(it) {

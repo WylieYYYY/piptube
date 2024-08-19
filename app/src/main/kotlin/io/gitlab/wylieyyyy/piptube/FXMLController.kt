@@ -52,7 +52,11 @@ class FXMLController(private val controlFrame: JFrame, private val videoWindow: 
         if (videoStack.empty()) {
             videoStack.push(lastVideo)
         } else {
-            player.updateVideo(videoStack.peek())
+            val extractor = videoStack.peek()
+            controlPane.clearVideoList()
+            player.updateVideo(extractor)
+            // TODO: ExtractionException
+            controlPane.addToVideoList(extractor.relatedItems?.items ?: listOf())
         }
     }
 }

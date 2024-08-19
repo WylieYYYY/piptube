@@ -1,0 +1,7 @@
+#statusBar {
+    -fx-background-color: rgba(50, 50, 50, 0.75);
+}
+
+#titleLabel {
+    -fx-text-fill: white;
+}

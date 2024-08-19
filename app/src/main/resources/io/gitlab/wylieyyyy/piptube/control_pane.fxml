@@ -22,7 +22,6 @@
          <children>
             <TabPane side="LEFT" tabClosingPolicy="UNAVAILABLE">
                <minWidth><Region fx:constant="USE_PREF_SIZE" /></minWidth>
-               <maxWidth><Region fx:constant="USE_PREF_SIZE" /></maxWidth>
                <tabs><Tab text="Results" /></tabs>
             </TabPane>
             <StackPane>
@@ -31,7 +30,7 @@
                   <ScrollPane fitToWidth="true" vbarPolicy="ALWAYS">
                      <content><VBox fx:id="videoList" /></content>
                   </ScrollPane>
-                  <ProgressIndicator fx:id="progress" visible="false">
+                  <ProgressIndicator fx:id="progress" visible="false" mouseTransparent="true">
                      <progress><ProgressIndicator fx:constant="INDETERMINATE_PROGRESS" /></progress>
                   </ProgressIndicator>
                </children>

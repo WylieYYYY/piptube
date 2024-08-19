@@ -7,6 +7,7 @@
 <?import javafx.scene.media.MediaView?>
 <?import javafx.scene.shape.Rectangle?>
 
+<?import javafx.scene.layout.Region?>
 <?import io.gitlab.wylieyyyy.piptube.FXMLController?>
 <?import io.gitlab.wylieyyyy.piptube.VideoPlayer?>
 
@@ -19,7 +20,9 @@
          <height><FXMLController fx:constant="BASE_HEIGHT" /></height>
       </Rectangle>
       <MediaView fx:id="videoView" />
-      <VBox alignment="BOTTOM_LEFT">
+      <VBox fx:id="statusBar">
+         <StackPane.alignment>BOTTOM_LEFT</StackPane.alignment>
+         <maxHeight><Region fx:constant="USE_PREF_SIZE" /></maxHeight>
          <children>
             <StackPane alignment="BOTTOM_LEFT">
                <children>
@@ -35,7 +38,7 @@
             <Label fx:id="titleLabel" text="Untitled Video" />
          </children>
       </VBox>
-      <ProgressIndicator fx:id="progress" visible="false">
+      <ProgressIndicator fx:id="progress" visible="false" mouseTransparent="true">
          <progress><ProgressIndicator fx:constant="INDETERMINATE_PROGRESS" /></progress>
       </ProgressIndicator>
    </children>

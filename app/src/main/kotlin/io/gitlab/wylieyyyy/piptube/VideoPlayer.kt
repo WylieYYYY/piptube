@@ -12,6 +12,14 @@ import javafx.scene.input.MouseEvent
 import javafx.scene.layout.StackPane
 import javafx.scene.media.Media
 import javafx.scene.media.MediaPlayer
+import javafx.scene.media.MediaPlayer.Status.DISPOSED
+import javafx.scene.media.MediaPlayer.Status.HALTED
+import javafx.scene.media.MediaPlayer.Status.PAUSED
+import javafx.scene.media.MediaPlayer.Status.PLAYING
+import javafx.scene.media.MediaPlayer.Status.READY
+import javafx.scene.media.MediaPlayer.Status.STALLED
+import javafx.scene.media.MediaPlayer.Status.STOPPED
+import javafx.scene.media.MediaPlayer.Status.UNKNOWN
 import javafx.scene.media.MediaView
 import javafx.scene.shape.Rectangle
 import javafx.util.Duration
@@ -52,6 +60,8 @@ class VideoPlayer(
 
     @FXML private lateinit var progress: ProgressIndicator
 
+    private var isMouseEventDrag = false
+
     init {
         val loader = FXMLLoader(this::class.java.getResource("video_player.fxml"))
         loader.setRoot(this)
@@ -62,8 +72,19 @@ class VideoPlayer(
     @Suppress("UnusedPrivateMember")
     @FXML
     private fun initialize() {
+        stylesheets.add(this::class.java.getResource("video_player.css").toString())
+
         videoView.onMouseClicked =
             handler {
+                if (isMouseEventDrag) return@handler
+
+                if (it.button == MouseButton.PRIMARY) {
+                    when (videoView.mediaPlayer.status!!) {
+                        READY, PLAYING -> videoView.mediaPlayer?.pause()
+                        PAUSED, STALLED, STOPPED -> videoView.mediaPlayer?.play()
+                        DISPOSED, HALTED, UNKNOWN -> Unit
+                    }
+                }
                 if (it.button == MouseButton.SECONDARY) controller.onBack()
             }
         progressBackgroundRectangle.onMouseClicked = handler(::handleSeekbarClicked)
@@ -71,16 +92,18 @@ class VideoPlayer(
         onScroll = handler(windowBoundsHandler::handleScroll)
         onMousePressed =
             handler {
+                isMouseEventDrag = false
                 windowBoundsHandler.prepareMove(Point(it.screenX.toInt(), it.screenY.toInt()))
             }
         onMouseDragged =
             handler {
+                isMouseEventDrag = true
                 windowBoundsHandler.updateMove(Point(it.screenX.toInt(), it.screenY.toInt()))
             }
     }
 
     public suspend fun updateVideo(url: String): StreamExtractor {
-        disposeMedia()
+        videoView.mediaPlayer?.dispose()
         progress.setVisible(true)
         controller.controlPane.clearVideoList()
 
@@ -134,10 +157,6 @@ class VideoPlayer(
             videoView.mediaPlayer = player
             player.play()
         }
-    }
-
-    public fun disposeMedia() {
-        videoView.mediaPlayer?.dispose()
     }
 
     private tailrec suspend fun updateVideoProgress(repeat: Boolean) {
