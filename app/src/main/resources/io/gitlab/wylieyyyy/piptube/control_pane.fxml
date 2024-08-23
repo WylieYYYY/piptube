@@ -8,6 +8,7 @@
 <?import javafx.scene.layout.HBox?>
 <?import javafx.scene.layout.StackPane?>
 <?import javafx.scene.layout.VBox?>
+<?import io.gitlab.wylieyyyy.piptube.SearchField?>
 
 <?import javafx.scene.layout.Region?>
 
@@ -16,7 +17,7 @@
       type="javafx.scene.layout.VBox"
       fillWidth="true">
    <children>
-      <TextField fx:id="searchField" focusTraversable="false" promptText="Search" />
+      <SearchField fx:id="searchField" />
       <HBox>
          <VBox.vgrow>ALWAYS</VBox.vgrow>
          <children>

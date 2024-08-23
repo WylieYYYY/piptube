@@ -18,17 +18,15 @@ class WindowBoundsHandler(
     }
 
     private val scrollMutex = Mutex()
-    private var controlMoveOffset = Point()
     private var videoMoveOffset = Point()
 
     public fun prepareMove(startPoint: Point) {
-        controlMoveOffset = controlFrame.location - startPoint
-        videoMoveOffset = videoWindow.location - controlFrame.location
+        videoMoveOffset = videoWindow.location - startPoint
     }
 
-    public fun updateMove(currentPoint: Point) {
-        controlFrame.location = currentPoint + controlMoveOffset
-        videoWindow.location = controlFrame.location + videoMoveOffset
+    public suspend fun updateMove(currentPoint: Point) {
+        videoWindow.location = currentPoint + videoMoveOffset
+        controlFrame.location = videoWindow.location - Point(0, controlFrame.height)
     }
 
     public fun moveToBottomRight() {
@@ -82,6 +80,21 @@ class WindowBoundsHandler(
             oldControlBounds.width,
             controlVerticalInset,
         )
+    }
+
+    public fun searchFieldFocus(
+        searchField: SearchField,
+        shouldFocus: Boolean,
+    ) {
+        controlFrame.focusableWindowState = shouldFocus
+
+        if (shouldFocus) {
+            controlFrame.toFront()
+            searchField.requestFocus()
+        } else {
+            controlFrame.setVisible(false)
+            controlFrame.setVisible(true)
+        }
     }
 }
 
