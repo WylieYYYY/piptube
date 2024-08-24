@@ -36,10 +36,11 @@ class FXMLController(private val controlFrame: JFrame, private val videoWindow: 
         for ((container, parent) in mapOf(controlFrame to controlPane, videoWindow to player)) {
             val components = container.contentPane.components
             (components.single() as JFXPanel).scene = Scene(parent)
+            container.pack()
         }
 
-        controlFrame.setVisible(true)
         windowBoundsHandler.moveToBottomRight()
+        controlFrame.setVisible(true)
         videoWindow.setVisible(true)
     }
 

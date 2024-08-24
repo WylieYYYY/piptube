@@ -1,5 +1,6 @@
 package io.gitlab.wylieyyyy.piptube
 
+import javafx.embed.swing.JFXPanel
 import javafx.scene.input.ScrollEvent
 import javafx.stage.Screen
 import kotlinx.coroutines.delay
@@ -82,15 +83,12 @@ class WindowBoundsHandler(
         )
     }
 
-    public fun searchFieldFocus(
-        searchField: SearchField,
-        shouldFocus: Boolean,
-    ) {
+    public fun focusControlPane(shouldFocus: Boolean) {
         controlFrame.focusableWindowState = shouldFocus
 
         if (shouldFocus) {
             controlFrame.toFront()
-            searchField.requestFocus()
+            (controlFrame.contentPane.components.single() as JFXPanel).requestFocusInWindow()
         } else {
             controlFrame.setVisible(false)
             controlFrame.setVisible(true)

@@ -28,7 +28,7 @@ class SearchField : TextField() {
         promptText = "Search"
         focusedProperty().addListener(
             ChangeListener { _, _, newValue ->
-                windowBoundsHandler.searchFieldFocus(this, newValue)
+                windowBoundsHandler.focusControlPane(newValue)
             },
         )
         onAction = handler { _ -> handleSearchFieldActioned() }
@@ -36,6 +36,7 @@ class SearchField : TextField() {
 
     private suspend fun handleSearchFieldActioned() {
         controller.controlPane.clearVideoList()
+        windowBoundsHandler.focusControlPane(false)
 
         // TODO: ParsingException
         val searchQueryHandler =

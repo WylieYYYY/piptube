@@ -4,18 +4,20 @@
 <?import javafx.scene.control.ScrollPane?>
 <?import javafx.scene.control.Tab?>
 <?import javafx.scene.control.TabPane?>
-<?import javafx.scene.control.TextField?>
 <?import javafx.scene.layout.HBox?>
 <?import javafx.scene.layout.StackPane?>
 <?import javafx.scene.layout.VBox?>
 <?import io.gitlab.wylieyyyy.piptube.SearchField?>
 
 <?import javafx.scene.layout.Region?>
+<?import io.gitlab.wylieyyyy.piptube.FXMLController?>
 
 
 <fx:root xmlns:fx="http://javafx.com/fxml/1"
       type="javafx.scene.layout.VBox"
       fillWidth="true">
+   <prefWidth><FXMLController fx:constant="BASE_WIDTH" /></prefWidth>
+   <prefHeight><FXMLController fx:constant="BASE_HEIGHT" /></prefHeight>
    <children>
       <SearchField fx:id="searchField" />
       <HBox>

@@ -6,7 +6,7 @@ import javax.swing.JFrame
 import javax.swing.JWindow
 import javax.swing.SwingUtilities
 
-fun main(args: Array<String>) {
+fun main() {
     SwingUtilities.invokeLater {
         val controlFrame =
             JFrame("PiPTube").apply {
@@ -14,7 +14,6 @@ fun main(args: Array<String>) {
                 setAlwaysOnTop(true)
                 setUndecorated(true)
                 setResizable(false)
-                setSize(FXMLController.BASE_WIDTH, FXMLController.BASE_HEIGHT + insets.top + insets.bottom)
                 defaultCloseOperation = JFrame.EXIT_ON_CLOSE
                 focusableWindowState = false
             }
@@ -22,7 +21,6 @@ fun main(args: Array<String>) {
             JWindow().apply {
                 add(JFXPanel())
                 setAlwaysOnTop(true)
-                setSize(FXMLController.BASE_WIDTH, FXMLController.BASE_HEIGHT)
                 focusableWindowState = false
             }
 
