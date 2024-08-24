@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.layout.HBox?>
+
+
+<fx:root xmlns:fx="http://javafx.com/fxml/1"
+      type="javafx.scene.layout.HBox"
+      alignment="CENTER">
+   <children>
+      <Label text="No video is available." />
+   </children>
+</fx:root>

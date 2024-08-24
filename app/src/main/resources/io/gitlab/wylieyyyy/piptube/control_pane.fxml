@@ -8,6 +8,7 @@
 <?import javafx.scene.layout.StackPane?>
 <?import javafx.scene.layout.VBox?>
 <?import io.gitlab.wylieyyyy.piptube.SearchField?>
+<?import io.gitlab.wylieyyyy.piptube.videolist.InfoCard?>
 
 <?import javafx.scene.layout.Region?>
 <?import io.gitlab.wylieyyyy.piptube.FXMLController?>
@@ -31,7 +32,11 @@
                <HBox.hgrow>ALWAYS</HBox.hgrow>
                <children>
                   <ScrollPane fitToWidth="true" vbarPolicy="ALWAYS">
-                     <content><VBox fx:id="videoList" /></content>
+                     <content>
+                        <VBox fx:id="videoList">
+                           <children><InfoCard /></children>
+                        </VBox>
+                     </content>
                   </ScrollPane>
                   <ProgressIndicator fx:id="progress" visible="false" mouseTransparent="true">
                      <progress><ProgressIndicator fx:constant="INDETERMINATE_PROGRESS" /></progress>

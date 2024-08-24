@@ -9,27 +9,27 @@
 <?import javafx.scene.layout.StackPane?>
 <?import javafx.scene.layout.VBox?>
 
-<?import io.gitlab.wylieyyyy.piptube.VideoListEntryControl?>
+<?import io.gitlab.wylieyyyy.piptube.videolist.VideoCard?>
 
 
 <fx:root xmlns:fx="http://javafx.com/fxml/1" type="javafx.scene.layout.StackPane">
    <children>
       <Button fx:id="button" maxWidth="Infinity">
-         <prefHeight><VideoListEntryControl fx:constant="HEIGHT" /></prefHeight>
+         <prefHeight><VideoCard fx:constant="HEIGHT" /></prefHeight>
       </Button>
       <HBox mouseTransparent="true">
-         <spacing><VideoListEntryControl fx:constant="SPACING" /></spacing>
+         <spacing><VideoCard fx:constant="SPACING" /></spacing>
          <padding>
             <Insets>
-               <topRightBottomLeft><VideoListEntryControl fx:constant="SPACING" /></topRightBottomLeft>
+               <topRightBottomLeft><VideoCard fx:constant="SPACING" /></topRightBottomLeft>
             </Insets>
          </padding>
          <children>
             <StackPane alignment="BOTTOM_RIGHT">
                <children>
                   <ImageView fx:id="thumbnailView" preserveRatio="true">
-                     <fitWidth><VideoListEntryControl fx:constant="THUMBNAIL_WIDTH" /></fitWidth>
-                     <fitHeight><VideoListEntryControl fx:constant="THUMBNAIL_HEIGHT" /></fitHeight>
+                     <fitWidth><VideoCard fx:constant="THUMBNAIL_WIDTH" /></fitWidth>
+                     <fitHeight><VideoCard fx:constant="THUMBNAIL_HEIGHT" /></fitHeight>
                      <image><Image url="@no_thumbnail.png" /></image>
                   </ImageView>
                   <Label fx:id="durationLabel" text="Unknown Duration" />

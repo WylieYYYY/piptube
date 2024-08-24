@@ -9,7 +9,9 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.schabi.newpipe.extractor.NewPipe
+import org.schabi.newpipe.extractor.search.SearchExtractor.NothingFoundException
 import org.schabi.newpipe.extractor.services.youtube.linkHandler.YoutubeSearchQueryHandlerFactory
+import kotlin.getOrThrow
 
 class SearchField : TextField() {
     public lateinit var controller: FXMLController
@@ -52,7 +54,14 @@ class SearchField : TextField() {
 
             withContext(Dispatchers.Main) {
                 // TODO: IOException, ExtractionException
-                controller.controlPane.addToVideoList(extractor.getInitialPage().items)
+                val items =
+                    runCatching { extractor.initialPage.items }.recoverCatching {
+                        when (it) {
+                            is NothingFoundException -> listOf()
+                            else -> throw it
+                        }
+                    }.getOrThrow()
+                controller.controlPane.addToVideoList(items)
             }
         }
     }

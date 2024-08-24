@@ -1,5 +1,7 @@
 package io.gitlab.wylieyyyy.piptube
 
+import io.gitlab.wylieyyyy.piptube.videolist.InfoCard
+import io.gitlab.wylieyyyy.piptube.videolist.VideoCard
 import javafx.beans.Observable
 import javafx.fxml.FXML
 import javafx.fxml.FXMLLoader
@@ -46,9 +48,12 @@ class ControlPane(
     }
 
     public suspend fun addToVideoList(items: List<InfoItem>) {
+        if (items.isEmpty()) {
+            videoList.children.add(InfoCard())
+        }
         videoList.children.addAll(
             items.filterIsInstance<StreamInfoItem>().map {
-                VideoListEntryControl(it) {
+                VideoCard(it) {
                     scope.launch {
                         windowBoundsHandler.resizeToBase()
                         videoList.children.clear()

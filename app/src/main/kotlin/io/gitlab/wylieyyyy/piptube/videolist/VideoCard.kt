@@ -1,4 +1,4 @@
-package io.gitlab.wylieyyyy.piptube
+package io.gitlab.wylieyyyy.piptube.videolist
 
 import javafx.event.Event
 import javafx.event.EventHandler
@@ -22,7 +22,7 @@ import javax.imageio.ImageIO
 import kotlin.time.DurationUnit
 import kotlin.time.toDuration
 
-class VideoListEntryControl(private val streamInfo: StreamInfoItem, private val navigate: () -> Unit) : StackPane() {
+class VideoCard(private val streamInfo: StreamInfoItem, private val navigate: () -> Unit) : StackPane() {
     companion object {
         public const val HEIGHT = 100
 
@@ -46,7 +46,7 @@ class VideoListEntryControl(private val streamInfo: StreamInfoItem, private val 
     private val scope = MainScope()
 
     init {
-        val loader = FXMLLoader(this::class.java.getResource("video_list_entry_control.fxml"))
+        val loader = FXMLLoader(this::class.java.getResource("video_card.fxml"))
         loader.setRoot(this)
         loader.setController(this)
         loader.load<Parent>()
@@ -55,7 +55,7 @@ class VideoListEntryControl(private val streamInfo: StreamInfoItem, private val 
     @Suppress("UnusedPrivateMember")
     @FXML
     private fun initialize() {
-        stylesheets.add(this::class.java.getResource("video_list_entry_control.css").toString())
+        stylesheets.add(this::class.java.getResource("video_card.css").toString())
 
         if (streamInfo.duration != -1L) {
             durationLabel.text =
