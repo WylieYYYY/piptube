@@ -2,7 +2,6 @@
 
 <?import javafx.scene.control.ProgressIndicator?>
 <?import javafx.scene.control.ScrollPane?>
-<?import javafx.scene.control.Tab?>
 <?import javafx.scene.control.TabPane?>
 <?import javafx.scene.layout.HBox?>
 <?import javafx.scene.layout.StackPane?>
@@ -24,9 +23,8 @@
       <HBox>
          <VBox.vgrow>ALWAYS</VBox.vgrow>
          <children>
-            <TabPane side="LEFT" tabClosingPolicy="UNAVAILABLE">
+            <TabPane fx:id="tabList" side="LEFT">
                <minWidth><Region fx:constant="USE_PREF_SIZE" /></minWidth>
-               <tabs><Tab text="Results" /></tabs>
             </TabPane>
             <StackPane>
                <HBox.hgrow>ALWAYS</HBox.hgrow>

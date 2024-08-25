@@ -61,7 +61,7 @@ class SearchField : TextField() {
                             else -> throw it
                         }
                     }.getOrThrow()
-                controller.controlPane.addToVideoList(items)
+                controller.controlPane.addToVideoList(TabIdentifier(TabIdentifier.TabType.SEARCH, text), items)
             }
         }
     }

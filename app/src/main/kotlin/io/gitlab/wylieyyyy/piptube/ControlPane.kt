@@ -3,10 +3,13 @@ package io.gitlab.wylieyyyy.piptube
 import io.gitlab.wylieyyyy.piptube.videolist.InfoCard
 import io.gitlab.wylieyyyy.piptube.videolist.VideoCard
 import javafx.beans.Observable
+import javafx.beans.value.ChangeListener
 import javafx.fxml.FXML
 import javafx.fxml.FXMLLoader
 import javafx.scene.Parent
 import javafx.scene.control.ProgressIndicator
+import javafx.scene.control.Tab
+import javafx.scene.control.TabPane
 import javafx.scene.layout.VBox
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
@@ -19,6 +22,8 @@ class ControlPane(
     private val scope: CoroutineScope,
 ) : VBox() {
     @FXML private lateinit var searchField: SearchField
+
+    @FXML private lateinit var tabList: TabPane
 
     @FXML private lateinit var videoList: VBox
 
@@ -38,16 +43,50 @@ class ControlPane(
         searchField.windowBoundsHandler = windowBoundsHandler
         searchField.scope = scope
 
+        tabList.selectionModel.selectedItemProperty().addListener(
+            ChangeListener { _, _, newValue ->
+                clearVideoList()
+                scope.launch {
+                    if (newValue == null) {
+                        addToVideoList(listOf())
+                    } else {
+                        @Suppress("UNCHECKED_CAST")
+                        val items = newValue.userData as List<InfoItem>
+                        addToVideoList(items)
+                    }
+                }
+            },
+        )
+
         videoList.children.addListener { _: Observable ->
             progress.setVisible(videoList.children.isEmpty())
         }
     }
 
     public fun clearVideoList() {
+        tabList.setDisable(true)
         videoList.children.clear()
     }
 
-    public suspend fun addToVideoList(items: List<InfoItem>) {
+    public suspend fun addToVideoList(
+        identifier: TabIdentifier,
+        items: List<InfoItem>,
+    ) {
+        val matchedTab =
+            tabList.tabs.firstOrNull { it.id == identifier.toString() } ?: Tab().apply {
+                userData = items
+                text = identifier.toString()
+                tabList.tabs.add(this)
+            }
+
+        userData = items
+        tabList.selectionModel.select(matchedTab)
+        addToVideoList(items)
+    }
+
+    private suspend fun addToVideoList(items: List<InfoItem>) {
+        tabList.setDisable(false)
+
         if (items.isEmpty()) {
             videoList.children.add(InfoCard())
         }
@@ -59,7 +98,7 @@ class ControlPane(
                         videoList.children.clear()
                         // TODO: ExtractionException
                         val relatedInfo = controller.gotoVideoUrl(it.url).relatedItems?.items ?: listOf()
-                        addToVideoList(relatedInfo)
+                        addToVideoList(TabIdentifier.RELATED, relatedInfo)
                     }
                 }
             },

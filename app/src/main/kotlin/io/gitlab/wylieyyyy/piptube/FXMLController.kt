@@ -57,7 +57,10 @@ class FXMLController(private val controlFrame: JFrame, private val videoWindow: 
             controlPane.clearVideoList()
             player.updateVideo(extractor)
             // TODO: ExtractionException
-            controlPane.addToVideoList(extractor.relatedItems?.items ?: listOf())
+            controlPane.addToVideoList(
+                TabIdentifier.RELATED,
+                extractor.relatedItems?.items ?: listOf(),
+            )
         }
     }
 }
