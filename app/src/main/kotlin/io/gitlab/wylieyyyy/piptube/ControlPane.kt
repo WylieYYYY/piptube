@@ -75,6 +75,7 @@ class ControlPane(
         val matchedTab =
             tabList.tabs.firstOrNull { it.id == identifier.toString() } ?: Tab().apply {
                 userData = items
+                id = identifier.toString()
                 text = identifier.toString()
                 tabList.tabs.add(this)
             }

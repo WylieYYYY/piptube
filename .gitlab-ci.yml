@@ -1,0 +1,16 @@
+image: gradle:8.10.0-jdk21
+
+stages:
+  - build
+
+build:
+  stage: build
+  script:
+    - gradle shadowJar -Pplatform=linux
+    - mv app/build/libs/app-all.jar piptube-linux.jar
+    - gradle shadowJar -Pplatform=windows
+    - mv app/build/libs/app-all.jar piptube-windows.jar
+  artifacts:
+    paths:
+      - piptube-linux.jar
+      - piptube-windows.jar

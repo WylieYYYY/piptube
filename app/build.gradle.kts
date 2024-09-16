@@ -35,6 +35,7 @@ java {
 javafx {
     version = "22.0.1"
     modules("javafx.controls", "javafx.fxml", "javafx.media", "javafx.swing")
+    setPlatform(properties["platform"] as String? ?: "linux")
 }
 
 application {
