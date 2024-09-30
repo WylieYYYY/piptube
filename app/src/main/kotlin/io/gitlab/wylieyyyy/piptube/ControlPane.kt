@@ -1,5 +1,6 @@
 package io.gitlab.wylieyyyy.piptube
 
+import io.gitlab.wylieyyyy.piptube.videolist.ChannelCard
 import io.gitlab.wylieyyyy.piptube.videolist.InfoCard
 import io.gitlab.wylieyyyy.piptube.videolist.VideoCard
 import javafx.beans.Observable
@@ -14,6 +15,7 @@ import javafx.scene.layout.VBox
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import org.schabi.newpipe.extractor.InfoItem
+import org.schabi.newpipe.extractor.channel.ChannelInfoItem
 import org.schabi.newpipe.extractor.stream.StreamInfoItem
 
 class ControlPane(
@@ -81,8 +83,12 @@ class ControlPane(
             }
 
         userData = items
-        tabList.selectionModel.select(matchedTab)
-        addToVideoList(items)
+        if (tabList.selectionModel.selectedItem == matchedTab) {
+            clearVideoList()
+            addToVideoList(items)
+        } else {
+            tabList.selectionModel.select(matchedTab)
+        }
     }
 
     private suspend fun addToVideoList(items: List<InfoItem>) {
@@ -92,15 +98,25 @@ class ControlPane(
             videoList.children.add(InfoCard())
         }
         videoList.children.addAll(
-            items.filterIsInstance<StreamInfoItem>().map {
-                VideoCard(it) {
-                    scope.launch {
-                        windowBoundsHandler.resizeToBase()
-                        videoList.children.clear()
-                        // TODO: ExtractionException
-                        val relatedInfo = controller.gotoVideoUrl(it.url).relatedItems?.items ?: listOf()
-                        addToVideoList(TabIdentifier.RELATED, relatedInfo)
-                    }
+            items.mapNotNull {
+                when (it) {
+                    is ChannelInfoItem ->
+                        ChannelCard(it, scope) {
+                            scope.launch {
+                                addToVideoList(TabIdentifier(TabIdentifier.TabType.CHANNEL, it.name), listOf(it))
+                            }
+                        }
+                    is StreamInfoItem ->
+                        VideoCard(it, scope) {
+                            scope.launch {
+                                windowBoundsHandler.resizeToBase()
+                                videoList.children.clear()
+                                // TODO: ExtractionException
+                                val relatedInfo = controller.gotoVideoUrl(it.url).relatedItems?.items ?: listOf()
+                                addToVideoList(TabIdentifier.RELATED, relatedInfo)
+                            }
+                        }
+                    else -> null
                 }
             },
         )

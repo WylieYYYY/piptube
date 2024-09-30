@@ -8,6 +8,7 @@ data class TabIdentifier private constructor(private val name: String, private v
     public constructor(type: TabType, name: String) : this(name, type)
 
     public enum class TabType(public val representation: String) {
+        CHANNEL("@ "),
         SEARCH("? "),
     }
 

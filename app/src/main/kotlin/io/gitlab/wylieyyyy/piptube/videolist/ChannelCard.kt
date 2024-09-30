@@ -8,22 +8,21 @@ import javafx.scene.Parent
 import javafx.scene.control.Button
 import javafx.scene.control.Label
 import javafx.scene.image.Image
-import javafx.scene.image.ImageView
 import javafx.scene.layout.StackPane
+import javafx.scene.paint.ImagePattern
+import javafx.scene.shape.Circle
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import org.schabi.newpipe.extractor.stream.StreamInfoItem
+import org.schabi.newpipe.extractor.channel.ChannelInfoItem
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
 import java.net.URI
 import javax.imageio.ImageIO
-import kotlin.time.DurationUnit
-import kotlin.time.toDuration
 
-class VideoCard(
-    private val streamInfo: StreamInfoItem,
+class ChannelCard(
+    private val channelInfo: ChannelInfoItem,
     private val scope: CoroutineScope,
     private val navigate: () -> Unit,
 ) : StackPane() {
@@ -32,23 +31,19 @@ class VideoCard(
 
         public const val SPACING = HEIGHT / 10
 
-        public const val THUMBNAIL_WIDTH = 160
-
-        public const val THUMBNAIL_HEIGHT = 90
+        public const val AVATAR_RADIUS = 45
     }
 
     @FXML private lateinit var button: Button
 
-    @FXML private lateinit var thumbnailView: ImageView
+    @FXML private lateinit var avatarCircle: Circle
 
-    @FXML private lateinit var durationLabel: Label
+    @FXML private lateinit var nameLabel: Label
 
-    @FXML private lateinit var titleLabel: Label
-
-    @FXML private lateinit var artistLabel: Label
+    @FXML private lateinit var descriptionLabel: Label
 
     init {
-        val loader = FXMLLoader(this::class.java.getResource("video_card.fxml"))
+        val loader = FXMLLoader(this::class.java.getResource("channel_card.fxml"))
         loader.setRoot(this)
         loader.setController(this)
         loader.load<Parent>()
@@ -57,22 +52,7 @@ class VideoCard(
     @Suppress("UnusedPrivateMember")
     @FXML
     private fun initialize() {
-        stylesheets.add(this::class.java.getResource("video_card.css").toString())
-
-        if (streamInfo.duration != -1L) {
-            durationLabel.text =
-                streamInfo.duration.toDuration(DurationUnit.SECONDS).toComponents { hours, minutes, seconds, _ ->
-                    val minuteSecondPart =
-                        "${minutes.toString().padStart(2, '0')}:" +
-                            "${seconds.toString().padStart(2, '0')}"
-                    if (hours != 0L) {
-                        "${hours.toString().padStart(2, '0')}:$minuteSecondPart"
-                    } else {
-                        minuteSecondPart
-                    }
-                }
-        }
-        streamInfo.thumbnails.firstOrNull()?.also {
+        channelInfo.thumbnails.firstOrNull()?.also {
             scope.launch(Dispatchers.IO) {
                 // TODO: IOException, URISyntaxException, MalformedURLException
                 val bufferedImage = ImageIO.read(URI(it.url).toURL())
@@ -80,14 +60,14 @@ class VideoCard(
                 // TODO: IOException
                 if (!ImageIO.write(bufferedImage, "JPEG", byteArrayOutputStream)) return@launch
                 // TODO: IllegalArgumentException
-                val image = Image(ByteArrayInputStream(byteArrayOutputStream.toByteArray()))
+                val pattern = ImagePattern(Image(ByteArrayInputStream(byteArrayOutputStream.toByteArray())))
                 withContext(Dispatchers.Main) {
-                    thumbnailView.image = image
+                    avatarCircle.fill = pattern
                 }
             }
         }
-        titleLabel.text = streamInfo.name
-        streamInfo.uploaderName?.let { artistLabel.text = it }
+        nameLabel.text = channelInfo.name
+        descriptionLabel.text = channelInfo.description
         button.onAction = handler { navigate() }
     }
 

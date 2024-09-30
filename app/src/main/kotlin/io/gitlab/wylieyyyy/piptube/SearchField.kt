@@ -10,7 +10,6 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.schabi.newpipe.extractor.NewPipe
 import org.schabi.newpipe.extractor.search.SearchExtractor.NothingFoundException
-import org.schabi.newpipe.extractor.services.youtube.linkHandler.YoutubeSearchQueryHandlerFactory
 import kotlin.getOrThrow
 
 class SearchField : TextField() {
@@ -41,12 +40,7 @@ class SearchField : TextField() {
         windowBoundsHandler.focusControlPane(false)
 
         // TODO: ParsingException
-        val searchQueryHandler =
-            youtubeService.searchQHFactory.fromQuery(
-                text,
-                listOf(YoutubeSearchQueryHandlerFactory.VIDEOS),
-                null,
-            )
+        val searchQueryHandler = youtubeService.searchQHFactory.fromQuery(text, listOf(), null)
         scope.launch(Dispatchers.IO) {
             val extractor = youtubeService.getSearchExtractor(searchQueryHandler)
             // TODO: IOException, ExtractionException
