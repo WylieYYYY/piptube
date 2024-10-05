@@ -8,22 +8,18 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import org.schabi.newpipe.extractor.NewPipe
+import org.schabi.newpipe.extractor.StreamingService
 import org.schabi.newpipe.extractor.search.SearchExtractor.NothingFoundException
 import kotlin.getOrThrow
 
 class SearchField : TextField() {
+    public lateinit var streamingService: StreamingService
+
     public lateinit var controller: FXMLController
 
     public lateinit var windowBoundsHandler: WindowBoundsHandler
 
     public lateinit var scope: CoroutineScope
-
-    private val youtubeService =
-        run {
-            NewPipe.init(DownloaderImpl)
-            NewPipe.getService("YouTube")
-        }
 
     init {
         promptText = "Search"
@@ -40,9 +36,9 @@ class SearchField : TextField() {
         windowBoundsHandler.focusControlPane(false)
 
         // TODO: ParsingException
-        val searchQueryHandler = youtubeService.searchQHFactory.fromQuery(text, listOf(), null)
+        val searchQueryHandler = streamingService.searchQHFactory.fromQuery(text, listOf(), null)
         scope.launch(Dispatchers.IO) {
-            val extractor = youtubeService.getSearchExtractor(searchQueryHandler)
+            val extractor = streamingService.getSearchExtractor(searchQueryHandler)
             // TODO: IOException, ExtractionException
             extractor.fetchPage()
 

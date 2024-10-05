@@ -24,7 +24,7 @@ import javax.imageio.ImageIO
 class ChannelCard(
     private val channelInfo: ChannelInfoItem,
     private val scope: CoroutineScope,
-    private val navigate: () -> Unit,
+    private val navigate: suspend () -> Unit,
 ) : StackPane() {
     companion object {
         public const val HEIGHT = 100

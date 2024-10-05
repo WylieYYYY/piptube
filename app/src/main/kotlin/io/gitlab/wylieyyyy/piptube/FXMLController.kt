@@ -30,7 +30,7 @@ class FXMLController(private val controlFrame: JFrame, private val videoWindow: 
     private val windowBoundsHandler = WindowBoundsHandler(controlFrame, videoWindow, BASE_HEIGHT)
 
     init {
-        controlPane = ControlPane(this, windowBoundsHandler, scope)
+        controlPane = ControlPane(youtubeService, this, windowBoundsHandler, scope)
         player = VideoPlayer(youtubeService, this, windowBoundsHandler, scope)
 
         for ((container, parent) in mapOf(controlFrame to controlPane, videoWindow to player)) {

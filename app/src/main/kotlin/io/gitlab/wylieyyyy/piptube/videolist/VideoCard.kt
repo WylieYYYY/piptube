@@ -25,7 +25,7 @@ import kotlin.time.toDuration
 class VideoCard(
     private val streamInfo: StreamInfoItem,
     private val scope: CoroutineScope,
-    private val navigate: () -> Unit,
+    private val navigate: suspend () -> Unit,
 ) : StackPane() {
     companion object {
         public const val HEIGHT = 100

@@ -13,12 +13,16 @@ import javafx.scene.control.Tab
 import javafx.scene.control.TabPane
 import javafx.scene.layout.VBox
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import org.schabi.newpipe.extractor.InfoItem
+import org.schabi.newpipe.extractor.StreamingService
 import org.schabi.newpipe.extractor.channel.ChannelInfoItem
 import org.schabi.newpipe.extractor.stream.StreamInfoItem
 
 class ControlPane(
+    private val streamingService: StreamingService,
     private val controller: FXMLController,
     private val windowBoundsHandler: WindowBoundsHandler,
     private val scope: CoroutineScope,
@@ -41,6 +45,7 @@ class ControlPane(
     @Suppress("UnusedPrivateMember")
     @FXML
     private fun initialize() {
+        searchField.streamingService = streamingService
         searchField.controller = controller
         searchField.windowBoundsHandler = windowBoundsHandler
         searchField.scope = scope
@@ -102,19 +107,26 @@ class ControlPane(
                 when (it) {
                     is ChannelInfoItem ->
                         ChannelCard(it, scope) {
-                            scope.launch {
-                                addToVideoList(TabIdentifier(TabIdentifier.TabType.CHANNEL, it.name), listOf(it))
-                            }
+                            clearVideoList()
+                            val channelInfo: MutableList<InfoItem> =
+                                withContext(Dispatchers.IO) {
+                                    streamingService.getFeedExtractor(it.url)?.run {
+                                        // TODO: ExtractionException, IOException
+                                        fetchPage()
+                                        // TODO: IOException, ExtractionException
+                                        initialPage.items.toMutableList()
+                                    } ?: mutableListOf()
+                                }
+                            channelInfo.addFirst(it)
+                            addToVideoList(TabIdentifier(TabIdentifier.TabType.CHANNEL, it.name), channelInfo)
                         }
                     is StreamInfoItem ->
                         VideoCard(it, scope) {
-                            scope.launch {
-                                windowBoundsHandler.resizeToBase()
-                                videoList.children.clear()
-                                // TODO: ExtractionException
-                                val relatedInfo = controller.gotoVideoUrl(it.url).relatedItems?.items ?: listOf()
-                                addToVideoList(TabIdentifier.RELATED, relatedInfo)
-                            }
+                            windowBoundsHandler.resizeToBase()
+                            videoList.children.clear()
+                            // TODO: ExtractionException
+                            val relatedInfo = controller.gotoVideoUrl(it.url).relatedItems?.items ?: listOf()
+                            addToVideoList(TabIdentifier.RELATED, relatedInfo)
                         }
                     else -> null
                 }
