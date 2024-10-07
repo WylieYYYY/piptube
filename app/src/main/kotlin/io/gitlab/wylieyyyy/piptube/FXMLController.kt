@@ -1,6 +1,7 @@
 package io.gitlab.wylieyyyy.piptube
 
 import javafx.embed.swing.JFXPanel
+import javafx.geometry.HorizontalDirection
 import javafx.scene.Scene
 import kotlinx.coroutines.MainScope
 import org.schabi.newpipe.extractor.NewPipe
@@ -39,7 +40,10 @@ class FXMLController(private val controlFrame: JFrame, private val videoWindow: 
             container.pack()
         }
 
-        windowBoundsHandler.moveToBottomRight()
+        val controlVerticalInset = controlFrame.insets.top + controlFrame.insets.bottom
+        controlFrame.setLocation(videoWindow.location.x, videoWindow.location.y - controlVerticalInset - BASE_HEIGHT)
+        windowBoundsHandler.moveToBottom(HorizontalDirection.RIGHT)
+
         controlFrame.setVisible(true)
         videoWindow.setVisible(true)
     }

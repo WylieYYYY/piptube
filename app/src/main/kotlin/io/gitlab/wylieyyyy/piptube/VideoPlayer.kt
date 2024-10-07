@@ -4,6 +4,7 @@ import javafx.event.Event
 import javafx.event.EventHandler
 import javafx.fxml.FXML
 import javafx.fxml.FXMLLoader
+import javafx.geometry.HorizontalDirection
 import javafx.scene.Parent
 import javafx.scene.control.Label
 import javafx.scene.control.ProgressIndicator
@@ -26,7 +27,6 @@ import javafx.util.Duration
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
-import kotlinx.coroutines.cancelChildren
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -86,6 +86,9 @@ class VideoPlayer(
                     }
                 }
                 if (it.button == MouseButton.SECONDARY) controller.onBack()
+                if (it.button == MouseButton.MIDDLE) {
+                    windowBoundsHandler.moveToBottom(!windowBoundsHandler.horizontalDirection())
+                }
             }
         progressBackgroundRectangle.onMouseClicked = handler(::handleSeekbarClicked)
         progressRectangle.onMouseClicked = handler(::handleSeekbarClicked)
@@ -127,7 +130,6 @@ class VideoPlayer(
     public fun updateVideo(extractor: StreamExtractor) {
         videoView.mediaPlayer?.dispose()
         progress.setVisible(true)
-        scope.coroutineContext.cancelChildren()
 
         // TODO: ParsingException
         titleLabel.text = extractor.name
@@ -160,10 +162,13 @@ class VideoPlayer(
     }
 
     private tailrec suspend fun updateVideoProgress(repeat: Boolean) {
+        if (videoView.mediaPlayer?.status in listOf(DISPOSED, HALTED, UNKNOWN, null)) return
+
         progressRectangle.width =
             videoView.mediaPlayer.run {
                 currentTime.toMillis() / totalDuration.toMillis() * SEEKBAR_WIDTH
             }
+
         if (repeat) {
             delay(VIDEO_PROGRESS_UPDATE_INTERVAL_MILLISECONDS)
             updateVideoProgress(repeat)
@@ -189,3 +194,10 @@ class VideoPlayer(
 operator fun Duration.times(other: Double): Duration = multiply(other)
 
 operator fun Duration.div(other: Double): Duration = divide(other)
+
+operator fun HorizontalDirection.not() =
+    if (this == HorizontalDirection.RIGHT) {
+        HorizontalDirection.LEFT
+    } else {
+        HorizontalDirection.RIGHT
+    }

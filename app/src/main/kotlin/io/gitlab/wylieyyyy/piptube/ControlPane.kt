@@ -79,20 +79,21 @@ class ControlPane(
         identifier: TabIdentifier,
         items: List<InfoItem>,
     ) {
-        val matchedTab =
-            tabList.tabs.firstOrNull { it.id == identifier.toString() } ?: Tab().apply {
+        val matchedTab = tabList.tabs.firstOrNull { it.id == identifier.toString() }
+        val targetTab =
+            matchedTab ?: Tab().apply {
                 userData = items
                 id = identifier.toString()
                 text = identifier.toString()
                 tabList.tabs.add(this)
             }
 
-        userData = items
+        targetTab.userData = items
         if (tabList.selectionModel.selectedItem == matchedTab) {
             clearVideoList()
             addToVideoList(items)
         } else {
-            tabList.selectionModel.select(matchedTab)
+            tabList.selectionModel.select(targetTab)
         }
     }
 

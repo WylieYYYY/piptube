@@ -1,6 +1,7 @@
 package io.gitlab.wylieyyyy.piptube
 
 import javafx.embed.swing.JFXPanel
+import javafx.geometry.HorizontalDirection
 import javafx.scene.input.ScrollEvent
 import javafx.stage.Screen
 import kotlinx.coroutines.delay
@@ -30,17 +31,27 @@ class WindowBoundsHandler(
         controlFrame.location = videoWindow.location - Point(0, controlFrame.height)
     }
 
-    public fun moveToBottomRight() {
-        val oldControlRelativeX = controlFrame.location.x - videoWindow.location.x
-        val controlVerticalInset = controlFrame.insets.top + controlFrame.insets.bottom
+    public fun horizontalDirection(): HorizontalDirection {
+        val screenBounds = Screen.getPrimary().visualBounds
+        val minVideoWindowX = screenBounds.minX + screenBounds.width / 2 - videoWindow.width / 2
+        return if (videoWindow.x > minVideoWindowX) HorizontalDirection.RIGHT else HorizontalDirection.LEFT
+    }
 
-        val oldVideoBounds = videoWindow.bounds
+    public fun moveToBottom(direction: HorizontalDirection) {
+        val oldControlRelative = controlFrame.location - videoWindow.location
+
         val screenBounds = Screen.getPrimary().visualBounds
 
-        val newVideoX = (screenBounds.minX + screenBounds.width).toInt() - oldVideoBounds.width
-        val newVideoY = (screenBounds.minY + screenBounds.height).toInt() - oldVideoBounds.height
+        val newVideoX =
+            if (direction == HorizontalDirection.RIGHT) {
+                (screenBounds.minX + screenBounds.width).toInt() - videoWindow.width
+            } else {
+                screenBounds.minX.toInt()
+            }
 
-        controlFrame.setLocation(newVideoX + oldControlRelativeX, newVideoY - controlVerticalInset - baseHeight)
+        val newVideoY = (screenBounds.minY + screenBounds.height).toInt() - videoWindow.height
+
+        controlFrame.setLocation(newVideoX + oldControlRelative.x, newVideoY + oldControlRelative.y)
         videoWindow.setLocation(newVideoX, newVideoY)
     }
 
