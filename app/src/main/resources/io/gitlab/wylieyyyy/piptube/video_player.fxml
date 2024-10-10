@@ -35,7 +35,7 @@
                   </Rectangle>
                </children>
             </StackPane>
-            <Label fx:id="titleLabel" text="Untitled Video" />
+            <Label fx:id="titleLabel" visible="false" managed="false" text="Untitled Video" />
          </children>
       </VBox>
       <ProgressIndicator fx:id="progress" visible="false" mouseTransparent="true">

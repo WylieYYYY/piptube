@@ -3,6 +3,7 @@ package io.gitlab.wylieyyyy.piptube
 import javafx.embed.swing.JFXPanel
 import javafx.geometry.HorizontalDirection
 import javafx.scene.Scene
+import javafx.scene.input.ScrollEvent
 import kotlinx.coroutines.MainScope
 import org.schabi.newpipe.extractor.NewPipe
 import org.schabi.newpipe.extractor.stream.StreamExtractor
@@ -46,6 +47,10 @@ class FXMLController(private val controlFrame: JFrame, private val videoWindow: 
 
         controlFrame.setVisible(true)
         videoWindow.setVisible(true)
+    }
+
+    public fun scrollControlPane(event: ScrollEvent) {
+        controlPane.scrollVideoList(event)
     }
 
     public suspend fun gotoVideoUrl(url: String): StreamExtractor {

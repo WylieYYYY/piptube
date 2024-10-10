@@ -9,8 +9,10 @@ import javafx.fxml.FXML
 import javafx.fxml.FXMLLoader
 import javafx.scene.Parent
 import javafx.scene.control.ProgressIndicator
+import javafx.scene.control.ScrollPane
 import javafx.scene.control.Tab
 import javafx.scene.control.TabPane
+import javafx.scene.input.ScrollEvent
 import javafx.scene.layout.VBox
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -30,6 +32,8 @@ class ControlPane(
     @FXML private lateinit var searchField: SearchField
 
     @FXML private lateinit var tabList: TabPane
+
+    @FXML private lateinit var scrollPane: ScrollPane
 
     @FXML private lateinit var videoList: VBox
 
@@ -68,6 +72,11 @@ class ControlPane(
         videoList.children.addListener { _: Observable ->
             progress.setVisible(videoList.children.isEmpty())
         }
+    }
+
+    public fun scrollVideoList(event: ScrollEvent) {
+        scrollPane.vmax = videoList.height
+        scrollPane.vvalue = (scrollPane.vvalue + event.deltaY).coerceIn(0.0, scrollPane.vmax)
     }
 
     public fun clearVideoList() {

@@ -26,7 +26,8 @@ import javafx.scene.shape.Rectangle
 import javafx.util.Duration
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.async
+import kotlinx.coroutines.MainScope
+import kotlinx.coroutines.cancelChildren
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -47,6 +48,8 @@ class VideoPlayer(
 
         public const val SEEKBAR_HEIGHT = 3
 
+        public const val SEEKBAR_EXPANDED_HEIGHT = SEEKBAR_HEIGHT * 3
+
         private const val VIDEO_PROGRESS_UPDATE_INTERVAL_MILLISECONDS = 1000L
     }
 
@@ -61,6 +64,7 @@ class VideoPlayer(
     @FXML private lateinit var progress: ProgressIndicator
 
     private var isMouseEventDrag = false
+    private val videoViewCoroutineScope = MainScope()
 
     init {
         val loader = FXMLLoader(this::class.java.getResource("video_player.fxml"))
@@ -92,7 +96,24 @@ class VideoPlayer(
             }
         progressBackgroundRectangle.onMouseClicked = handler(::handleSeekbarClicked)
         progressRectangle.onMouseClicked = handler(::handleSeekbarClicked)
-        onScroll = handler(windowBoundsHandler::handleScroll)
+        onMouseEntered =
+            handler {
+                titleLabel.setVisible(true)
+                progressBackgroundRectangle.height = SEEKBAR_EXPANDED_HEIGHT.toDouble()
+                progressRectangle.height = SEEKBAR_EXPANDED_HEIGHT.toDouble()
+            }
+        onMouseExited =
+            handler {
+                titleLabel.setVisible(false)
+                progressBackgroundRectangle.height = SEEKBAR_HEIGHT.toDouble()
+                progressRectangle.height = SEEKBAR_HEIGHT.toDouble()
+            }
+        onScroll =
+            handler {
+                if (!windowBoundsHandler.handleScroll(it)) {
+                    controller.scrollControlPane(it)
+                }
+            }
         onMousePressed =
             handler {
                 isMouseEventDrag = false
@@ -103,6 +124,7 @@ class VideoPlayer(
                 isMouseEventDrag = true
                 windowBoundsHandler.updateMove(Point(it.screenX.toInt(), it.screenY.toInt()))
             }
+        titleLabel.managedProperty().bind(titleLabel.visibleProperty())
     }
 
     public suspend fun updateVideo(url: String): StreamExtractor {
@@ -110,8 +132,8 @@ class VideoPlayer(
         progress.setVisible(true)
         controller.controlPane.clearVideoList()
 
-        val deferredExtractor =
-            scope.async(Dispatchers.IO) {
+        val extractor =
+            withContext(Dispatchers.IO) {
                 // TODO: ParsingException
                 val streamLinkHandler = streamingService.streamLHFactory.fromUrl(url)
                 val extractor = streamingService.getStreamExtractor(streamLinkHandler)
@@ -120,16 +142,14 @@ class VideoPlayer(
                 extractor
             }
 
-        scope.launch(Dispatchers.IO) {
-            val extractor = deferredExtractor.await()
-            withContext(Dispatchers.Main) { updateVideo(extractor) }
-        }
-        return withContext(Dispatchers.IO) { deferredExtractor.await() }
+        updateVideo(extractor)
+        return extractor
     }
 
     public fun updateVideo(extractor: StreamExtractor) {
         videoView.mediaPlayer?.dispose()
         progress.setVisible(true)
+        videoViewCoroutineScope.coroutineContext.cancelChildren()
 
         // TODO: ParsingException
         titleLabel.text = extractor.name
@@ -142,7 +162,7 @@ class VideoPlayer(
             // TODO: MediaException
             val player = MediaPlayer(media)
 
-            scope.launch {
+            videoViewCoroutineScope.launch {
                 // TODO: ParsingException
                 if (extractor.length > 0) updateVideoProgress(true)
             }
@@ -162,8 +182,6 @@ class VideoPlayer(
     }
 
     private tailrec suspend fun updateVideoProgress(repeat: Boolean) {
-        if (videoView.mediaPlayer?.status in listOf(DISPOSED, HALTED, UNKNOWN, null)) return
-
         progressRectangle.width =
             videoView.mediaPlayer.run {
                 currentTime.toMillis() / totalDuration.toMillis() * SEEKBAR_WIDTH

@@ -55,8 +55,8 @@ class WindowBoundsHandler(
         videoWindow.setLocation(newVideoX, newVideoY)
     }
 
-    public suspend fun handleScroll(event: ScrollEvent) {
-        if (!scrollMutex.tryLock()) return
+    public suspend fun handleScroll(event: ScrollEvent): Boolean {
+        if (!scrollMutex.tryLock()) return true
         try {
             val oldControlBounds = controlFrame.bounds
             val controlVerticalInset = controlFrame.insets.top + controlFrame.insets.bottom
@@ -75,6 +75,7 @@ class WindowBoundsHandler(
             )
 
             delay(BOUNDS_SETTLE_DELAY_MILLISECONDS)
+            return controlDeltaHeight != 0
         } finally {
             scrollMutex.unlock()
         }

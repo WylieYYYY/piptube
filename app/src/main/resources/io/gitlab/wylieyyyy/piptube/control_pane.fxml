@@ -29,7 +29,7 @@
             <StackPane>
                <HBox.hgrow>ALWAYS</HBox.hgrow>
                <children>
-                  <ScrollPane fitToWidth="true" vbarPolicy="ALWAYS">
+                  <ScrollPane fx:id="scrollPane" fitToWidth="true" vbarPolicy="ALWAYS">
                      <content>
                         <VBox fx:id="videoList">
                            <children><InfoCard /></children>
