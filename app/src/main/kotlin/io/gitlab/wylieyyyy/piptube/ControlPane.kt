@@ -19,9 +19,60 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.schabi.newpipe.extractor.InfoItem
+import org.schabi.newpipe.extractor.ListExtractor
 import org.schabi.newpipe.extractor.StreamingService
 import org.schabi.newpipe.extractor.channel.ChannelInfoItem
+import org.schabi.newpipe.extractor.search.SearchExtractor.NothingFoundException
 import org.schabi.newpipe.extractor.stream.StreamInfoItem
+import kotlin.collections.mutableListOf
+
+class VideoListGenerator(
+    public val seenItems: MutableList<InfoItem> = mutableListOf(),
+    private val extractor: ListExtractor<out InfoItem>? = null,
+) {
+    private val sentinelInitialPage = ListExtractor.InfoItemsPage(listOf(), null, listOf())
+    private var currentPage: ListExtractor.InfoItemsPage<out InfoItem> = sentinelInitialPage
+
+    public fun isProper(): Boolean {
+        return extractor == null || currentPage !== sentinelInitialPage
+    }
+
+    public fun isExhausted() = currentPage === ListExtractor.InfoItemsPage.emptyPage<InfoItem>()
+
+    public suspend fun unseenItems(): List<InfoItem> {
+        if (extractor == null) return listOf()
+
+        return withContext(Dispatchers.IO) {
+            // TODO: ExtractionException, IOException
+            extractor.fetchPage()
+            currentPage = nextPage()
+            // TODO: ExtractionException, IOException
+            runCatching {
+                seenItems.addAll(currentPage.items)
+                currentPage.items
+            }.recoverCatching {
+                when (it) {
+                    is NothingFoundException -> listOf()
+                    else -> throw it
+                }
+            }.getOrThrow()
+        }
+    }
+
+    private fun nextPage(): ListExtractor.InfoItemsPage<out InfoItem> {
+        return currentPage.let {
+            (
+                if (it === sentinelInitialPage) {
+                    extractor?.initialPage
+                } else if (it.hasNextPage()) {
+                    extractor?.getPage(it.nextPage)
+                } else {
+                    null
+                }
+            ) ?: ListExtractor.InfoItemsPage.emptyPage()
+        }
+    }
+}
 
 class ControlPane(
     private val streamingService: StreamingService,
@@ -59,11 +110,11 @@ class ControlPane(
                 clearVideoList()
                 scope.launch {
                     if (newValue == null) {
-                        addToVideoList(listOf())
+                        addToVideoList(VideoListGenerator())
                     } else {
                         @Suppress("UNCHECKED_CAST")
-                        val items = newValue.userData as List<InfoItem>
-                        addToVideoList(items)
+                        val generator = newValue.userData as VideoListGenerator
+                        addToVideoList(generator)
                     }
                 }
             },
@@ -86,60 +137,80 @@ class ControlPane(
 
     public suspend fun addToVideoList(
         identifier: TabIdentifier,
-        items: List<InfoItem>,
+        generator: VideoListGenerator,
     ) {
         val matchedTab = tabList.tabs.firstOrNull { it.id == identifier.toString() }
         val targetTab =
             matchedTab ?: Tab().apply {
-                userData = items
+                userData = generator
                 id = identifier.toString()
                 text = identifier.toString()
                 tabList.tabs.add(this)
             }
 
-        targetTab.userData = items
+        targetTab.userData = generator
         if (tabList.selectionModel.selectedItem == matchedTab) {
             clearVideoList()
-            addToVideoList(items)
+            addToVideoList(generator)
         } else {
             tabList.selectionModel.select(targetTab)
         }
     }
 
-    private suspend fun addToVideoList(items: List<InfoItem>) {
+    private suspend fun addToVideoList(
+        generator: VideoListGenerator,
+        unseenOnly: Boolean = false,
+    ) {
         tabList.setDisable(false)
 
+        val items =
+            if (generator.isProper() && !unseenOnly) {
+                generator.seenItems
+            } else {
+                val unseenItems = generator.unseenItems()
+                if (unseenOnly) unseenItems else generator.seenItems
+            }
+
         if (items.isEmpty()) {
-            videoList.children.add(InfoCard())
+            videoList.children.add(InfoCard("No video is available."))
+            return
         }
+
         videoList.children.addAll(
             items.mapNotNull {
                 when (it) {
                     is ChannelInfoItem ->
                         ChannelCard(it, scope) {
                             clearVideoList()
-                            val channelInfo: MutableList<InfoItem> =
-                                withContext(Dispatchers.IO) {
-                                    streamingService.getFeedExtractor(it.url)?.run {
-                                        // TODO: ExtractionException, IOException
-                                        fetchPage()
-                                        // TODO: IOException, ExtractionException
-                                        initialPage.items.toMutableList()
-                                    } ?: mutableListOf()
-                                }
-                            channelInfo.addFirst(it)
-                            addToVideoList(TabIdentifier(TabIdentifier.TabType.CHANNEL, it.name), channelInfo)
+                            addToVideoList(
+                                TabIdentifier(TabIdentifier.TabType.CHANNEL, it.name),
+                                VideoListGenerator(mutableListOf(it), streamingService.getFeedExtractor(it.url)),
+                            )
                         }
                     is StreamInfoItem ->
                         VideoCard(it, scope) {
                             windowBoundsHandler.resizeToBase()
                             videoList.children.clear()
                             // TODO: ExtractionException
-                            val relatedInfo = controller.gotoVideoUrl(it.url).relatedItems?.items ?: listOf()
-                            addToVideoList(TabIdentifier.RELATED, relatedInfo)
+                            val relatedInfo =
+                                controller.gotoVideoUrl(it.url)
+                                    .relatedItems?.items?.toMutableList() ?: mutableListOf()
+                            addToVideoList(TabIdentifier.RELATED, VideoListGenerator(relatedInfo))
                         }
                     else -> null
                 }
+            },
+        )
+
+        if (generator.isExhausted()) {
+            videoList.children.add(InfoCard("No video is available."))
+            return
+        }
+
+        videoList.children.add(
+            InfoCard("Load more...", scope) {
+                videoList.children.removeLast()
+                addToVideoList(generator, true)
             },
         )
     }

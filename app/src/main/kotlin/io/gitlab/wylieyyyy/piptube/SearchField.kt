@@ -5,12 +5,8 @@ import javafx.event.Event
 import javafx.event.EventHandler
 import javafx.scene.control.TextField
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import org.schabi.newpipe.extractor.StreamingService
-import org.schabi.newpipe.extractor.search.SearchExtractor.NothingFoundException
-import kotlin.getOrThrow
 
 class SearchField : TextField() {
     public lateinit var streamingService: StreamingService
@@ -37,23 +33,11 @@ class SearchField : TextField() {
 
         // TODO: ParsingException
         val searchQueryHandler = streamingService.searchQHFactory.fromQuery(text, listOf(), null)
-        scope.launch(Dispatchers.IO) {
-            val extractor = streamingService.getSearchExtractor(searchQueryHandler)
-            // TODO: IOException, ExtractionException
-            extractor.fetchPage()
-
-            withContext(Dispatchers.Main) {
-                // TODO: IOException, ExtractionException
-                val items =
-                    runCatching { extractor.initialPage.items }.recoverCatching {
-                        when (it) {
-                            is NothingFoundException -> listOf()
-                            else -> throw it
-                        }
-                    }.getOrThrow()
-                controller.controlPane.addToVideoList(TabIdentifier(TabIdentifier.TabType.SEARCH, text), items)
-            }
-        }
+        val extractor = streamingService.getSearchExtractor(searchQueryHandler)
+        controller.controlPane.addToVideoList(
+            TabIdentifier(TabIdentifier.TabType.SEARCH, text),
+            VideoListGenerator(extractor = extractor),
+        )
     }
 
     private fun <T : Event> handler(block: suspend (event: T) -> Unit): EventHandler<T> =

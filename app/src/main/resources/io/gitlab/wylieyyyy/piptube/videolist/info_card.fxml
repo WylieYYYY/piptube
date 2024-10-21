@@ -8,6 +8,6 @@
       type="javafx.scene.layout.HBox"
       alignment="CENTER">
    <children>
-      <Label text="No video is available." />
+      <Label fx:id="label" text="No information available." />
    </children>
 </fx:root>
