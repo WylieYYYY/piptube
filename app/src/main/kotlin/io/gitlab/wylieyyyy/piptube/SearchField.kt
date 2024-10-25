@@ -28,16 +28,17 @@ class SearchField : TextField() {
     }
 
     private suspend fun handleSearchFieldActioned() {
-        controller.controlPane.clearVideoList()
-        windowBoundsHandler.focusControlPane(false)
+        controller.controlPane.withClearedVideoList {
+            windowBoundsHandler.focusControlPane(false)
 
-        // TODO: ParsingException
-        val searchQueryHandler = streamingService.searchQHFactory.fromQuery(text, listOf(), null)
-        val extractor = streamingService.getSearchExtractor(searchQueryHandler)
-        controller.controlPane.addToVideoList(
-            TabIdentifier(TabIdentifier.TabType.SEARCH, text),
-            VideoListGenerator(extractor = extractor),
-        )
+            // TODO: ParsingException
+            val searchQueryHandler = streamingService.searchQHFactory.fromQuery(text, listOf(), null)
+            val extractor = streamingService.getSearchExtractor(searchQueryHandler)
+            Pair(
+                TabIdentifier(TabIdentifier.TabType.SEARCH, text),
+                VideoListGenerator(extractor = extractor),
+            )
+        }
     }
 
     private fun <T : Event> handler(block: suspend (event: T) -> Unit): EventHandler<T> =

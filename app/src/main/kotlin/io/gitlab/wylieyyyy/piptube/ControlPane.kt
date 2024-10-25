@@ -125,36 +125,40 @@ class ControlPane(
         }
     }
 
-    public fun scrollVideoList(event: ScrollEvent) {
+    public fun scrollVideoList(event: ScrollEvent): Boolean {
         scrollPane.vmax = videoList.height
+        val oldVvalue = scrollPane.vvalue
         scrollPane.vvalue = (scrollPane.vvalue + event.deltaY).coerceIn(0.0, scrollPane.vmax)
+        return oldVvalue != scrollPane.vvalue
     }
 
-    public fun clearVideoList() {
+    public suspend fun withClearedVideoList(block: suspend () -> Pair<TabIdentifier, VideoListGenerator>) {
+        clearVideoList()
+        AutoCloseable { tabList.setDisable(false) }.use {
+            val (identifier, generator) = block()
+
+            val matchedTab = tabList.tabs.firstOrNull { it.id == identifier.toString() }
+            val targetTab =
+                matchedTab ?: Tab().apply {
+                    userData = generator
+                    id = identifier.toString()
+                    text = identifier.toString()
+                    tabList.tabs.add(this)
+                }
+
+            targetTab.userData = generator
+            if (tabList.selectionModel.selectedItem == matchedTab) {
+                clearVideoList()
+                addToVideoList(generator)
+            } else {
+                tabList.selectionModel.select(targetTab)
+            }
+        }
+    }
+
+    private fun clearVideoList() {
         tabList.setDisable(true)
         videoList.children.clear()
-    }
-
-    public suspend fun addToVideoList(
-        identifier: TabIdentifier,
-        generator: VideoListGenerator,
-    ) {
-        val matchedTab = tabList.tabs.firstOrNull { it.id == identifier.toString() }
-        val targetTab =
-            matchedTab ?: Tab().apply {
-                userData = generator
-                id = identifier.toString()
-                text = identifier.toString()
-                tabList.tabs.add(this)
-            }
-
-        targetTab.userData = generator
-        if (tabList.selectionModel.selectedItem == matchedTab) {
-            clearVideoList()
-            addToVideoList(generator)
-        } else {
-            tabList.selectionModel.select(targetTab)
-        }
     }
 
     private suspend fun addToVideoList(
@@ -181,21 +185,23 @@ class ControlPane(
                 when (it) {
                     is ChannelInfoItem ->
                         ChannelCard(it, scope) {
-                            clearVideoList()
-                            addToVideoList(
-                                TabIdentifier(TabIdentifier.TabType.CHANNEL, it.name),
-                                VideoListGenerator(mutableListOf(it), streamingService.getFeedExtractor(it.url)),
-                            )
+                            withClearedVideoList {
+                                Pair(
+                                    TabIdentifier(TabIdentifier.TabType.CHANNEL, it.name),
+                                    VideoListGenerator(mutableListOf(it), streamingService.getFeedExtractor(it.url)),
+                                )
+                            }
                         }
                     is StreamInfoItem ->
                         VideoCard(it, scope) {
                             windowBoundsHandler.resizeToBase()
-                            videoList.children.clear()
-                            // TODO: ExtractionException
-                            val relatedInfo =
-                                controller.gotoVideoUrl(it.url)
-                                    .relatedItems?.items?.toMutableList() ?: mutableListOf()
-                            addToVideoList(TabIdentifier.RELATED, VideoListGenerator(relatedInfo))
+                            withClearedVideoList {
+                                // TODO: ExtractionException
+                                val relatedInfo =
+                                    controller.gotoVideoUrl(it.url)
+                                        .relatedItems?.items?.toMutableList() ?: mutableListOf()
+                                Pair(TabIdentifier.RELATED, VideoListGenerator(relatedInfo))
+                            }
                         }
                     else -> null
                 }
@@ -209,8 +215,10 @@ class ControlPane(
 
         videoList.children.add(
             InfoCard("Load more...", scope) {
-                videoList.children.removeLast()
+                videoList.children.last().setVisible(false)
+                val index = videoList.children.lastIndex
                 addToVideoList(generator, true)
+                videoList.children.removeAt(index)
             },
         )
     }

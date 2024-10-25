@@ -50,9 +50,7 @@ class FXMLController(private val controlFrame: JFrame, private val videoWindow: 
         videoWindow.setVisible(true)
     }
 
-    public fun scrollControlPane(event: ScrollEvent) {
-        controlPane.scrollVideoList(event)
-    }
+    public fun scrollControlPane(event: ScrollEvent) = controlPane.scrollVideoList(event)
 
     public suspend fun gotoVideoUrl(url: String): StreamExtractor {
         return videoStack.push(player.updateVideo(url))
@@ -64,13 +62,14 @@ class FXMLController(private val controlFrame: JFrame, private val videoWindow: 
             videoStack.push(lastVideo)
         } else {
             val extractor = videoStack.peek()
-            controlPane.clearVideoList()
-            player.updateVideo(extractor)
-            // TODO: ExtractionException
-            controlPane.addToVideoList(
-                TabIdentifier.RELATED,
-                VideoListGenerator(extractor.relatedItems?.items?.toMutableList() ?: mutableListOf()),
-            )
+            controlPane.withClearedVideoList {
+                player.updateVideo(extractor)
+                // TODO: ExtractionException
+                Pair(
+                    TabIdentifier.RELATED,
+                    VideoListGenerator(extractor.relatedItems?.items?.toMutableList() ?: mutableListOf()),
+                )
+            }
         }
     }
 }

@@ -92,6 +92,7 @@ class VideoPlayer(
                 if (it.button == MouseButton.SECONDARY) controller.onBack()
                 if (it.button == MouseButton.MIDDLE) {
                     windowBoundsHandler.moveToBottom(!windowBoundsHandler.horizontalDirection())
+                    windowBoundsHandler.resizeToBase()
                 }
             }
         progressBackgroundRectangle.onMouseClicked = handler(::handleSeekbarClicked)
@@ -110,7 +111,9 @@ class VideoPlayer(
             }
         onScroll =
             handler {
-                if (!windowBoundsHandler.handleScroll(it)) {
+                if (it.deltaY < 0 && !controller.scrollControlPane(it)) {
+                    windowBoundsHandler.handleScroll(it)
+                } else if (it.deltaY > 0 && !windowBoundsHandler.handleScroll(it)) {
                     controller.scrollControlPane(it)
                 }
             }
@@ -130,7 +133,6 @@ class VideoPlayer(
     public suspend fun updateVideo(url: String): StreamExtractor {
         videoView.mediaPlayer?.dispose()
         progress.setVisible(true)
-        controller.controlPane.clearVideoList()
 
         val extractor =
             withContext(Dispatchers.IO) {
