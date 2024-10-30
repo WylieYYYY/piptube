@@ -3,6 +3,8 @@ package io.gitlab.wylieyyyy.piptube
 data class TabIdentifier private constructor(private val name: String, private val visibleType: TabType? = null) {
     companion object {
         public val RELATED = TabIdentifier("~ Related")
+
+        public val SETTINGS = TabIdentifier("/ Settings")
     }
 
     public constructor(type: TabType, name: String) : this(name, type)

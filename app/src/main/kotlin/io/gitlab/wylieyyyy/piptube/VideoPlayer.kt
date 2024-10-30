@@ -90,9 +90,8 @@ class VideoPlayer(
                     }
                 }
                 if (it.button == MouseButton.SECONDARY) controller.onBack()
-                if (it.button == MouseButton.MIDDLE) {
+                if (it.button == MouseButton.MIDDLE && !windowBoundsHandler.resizeToBase()) {
                     windowBoundsHandler.moveToBottom(!windowBoundsHandler.horizontalDirection())
-                    windowBoundsHandler.resizeToBase()
                 }
             }
         progressBackgroundRectangle.onMouseClicked = handler(::handleSeekbarClicked)

@@ -3,6 +3,7 @@ import com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar
 plugins {
     kotlin("jvm") version "2.0.0"
     id("com.gradleup.shadow") version "8.3.0"
+    id("org.jetbrains.dokka") version "1.9.20"
     id("org.openjfx.javafxplugin") version "0.1.0"
     application
 }
@@ -40,6 +41,10 @@ javafx {
 
 application {
     mainClass = "io.gitlab.wylieyyyy.piptube.AppKt"
+}
+
+tasks.dokkaHtml.configure {
+    suppressInheritedMembers = true
 }
 
 tasks.withType<ShadowJar>().configureEach {

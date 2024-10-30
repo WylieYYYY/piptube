@@ -67,7 +67,7 @@ class FXMLController(private val controlFrame: JFrame, private val videoWindow: 
                 // TODO: ExtractionException
                 Pair(
                     TabIdentifier.RELATED,
-                    VideoListGenerator(extractor.relatedItems?.items?.toMutableList() ?: mutableListOf()),
+                    VideoListGenerator(seenItems = extractor.relatedItems?.items?.toMutableList() ?: mutableListOf()),
                 )
             }
         }

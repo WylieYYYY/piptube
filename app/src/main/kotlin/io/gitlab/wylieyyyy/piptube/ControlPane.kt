@@ -5,9 +5,13 @@ import io.gitlab.wylieyyyy.piptube.videolist.InfoCard
 import io.gitlab.wylieyyyy.piptube.videolist.VideoCard
 import javafx.beans.Observable
 import javafx.beans.value.ChangeListener
+import javafx.event.Event
+import javafx.event.EventHandler
 import javafx.fxml.FXML
 import javafx.fxml.FXMLLoader
+import javafx.scene.Node
 import javafx.scene.Parent
+import javafx.scene.control.Button
 import javafx.scene.control.ProgressIndicator
 import javafx.scene.control.ScrollPane
 import javafx.scene.control.Tab
@@ -27,6 +31,7 @@ import org.schabi.newpipe.extractor.stream.StreamInfoItem
 import kotlin.collections.mutableListOf
 
 class VideoListGenerator(
+    public val topNodes: List<Node> = listOf(),
     public val seenItems: MutableList<InfoItem> = mutableListOf(),
     private val extractor: ListExtractor<out InfoItem>? = null,
 ) {
@@ -82,6 +87,8 @@ class ControlPane(
 ) : VBox() {
     @FXML private lateinit var searchField: SearchField
 
+    @FXML private lateinit var menuButton: Button
+
     @FXML private lateinit var tabList: TabPane
 
     @FXML private lateinit var scrollPane: ScrollPane
@@ -104,6 +111,13 @@ class ControlPane(
         searchField.controller = controller
         searchField.windowBoundsHandler = windowBoundsHandler
         searchField.scope = scope
+
+        menuButton.onAction =
+            handler {
+                withClearedVideoList {
+                    Pair(TabIdentifier.SETTINGS, VideoListGenerator())
+                }
+            }
 
         tabList.selectionModel.selectedItemProperty().addListener(
             ChangeListener { _, _, newValue ->
@@ -175,10 +189,12 @@ class ControlPane(
                 if (unseenOnly) unseenItems else generator.seenItems
             }
 
-        if (items.isEmpty()) {
+        if (generator.topNodes.isEmpty() && items.isEmpty()) {
             videoList.children.add(InfoCard("No video is available."))
             return
         }
+
+        videoList.children.addAll(generator.topNodes)
 
         videoList.children.addAll(
             items.mapNotNull {
@@ -188,7 +204,10 @@ class ControlPane(
                             withClearedVideoList {
                                 Pair(
                                     TabIdentifier(TabIdentifier.TabType.CHANNEL, it.name),
-                                    VideoListGenerator(mutableListOf(it), streamingService.getFeedExtractor(it.url)),
+                                    VideoListGenerator(
+                                        seenItems = mutableListOf(it),
+                                        extractor = streamingService.getFeedExtractor(it.url),
+                                    ),
                                 )
                             }
                         }
@@ -200,7 +219,7 @@ class ControlPane(
                                 val relatedInfo =
                                     controller.gotoVideoUrl(it.url)
                                         .relatedItems?.items?.toMutableList() ?: mutableListOf()
-                                Pair(TabIdentifier.RELATED, VideoListGenerator(relatedInfo))
+                                Pair(TabIdentifier.RELATED, VideoListGenerator(seenItems = relatedInfo))
                             }
                         }
                     else -> null
@@ -222,4 +241,11 @@ class ControlPane(
             },
         )
     }
+
+    private fun <T : Event> handler(block: suspend (event: T) -> Unit): EventHandler<T> =
+        object : EventHandler<T> {
+            override fun handle(event: T) {
+                scope.launch { block(event) }
+            }
+        }
 }

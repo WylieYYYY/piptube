@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
+<?import javafx.scene.control.Button?>
 <?import javafx.scene.control.ProgressIndicator?>
 <?import javafx.scene.control.ScrollPane?>
 <?import javafx.scene.control.TabPane?>
@@ -19,7 +20,12 @@
    <prefWidth><FXMLController fx:constant="BASE_WIDTH" /></prefWidth>
    <prefHeight><FXMLController fx:constant="BASE_HEIGHT" /></prefHeight>
    <children>
-      <SearchField fx:id="searchField" />
+      <HBox>
+         <SearchField fx:id="searchField">
+            <HBox.hgrow>ALWAYS</HBox.hgrow>
+         </SearchField>
+         <Button fx:id="menuButton" text="..." />
+      </HBox>
       <HBox>
          <VBox.vgrow>ALWAYS</VBox.vgrow>
          <children>

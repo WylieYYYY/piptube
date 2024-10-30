@@ -81,7 +81,7 @@ class WindowBoundsHandler(
         }
     }
 
-    public fun resizeToBase() {
+    public fun resizeToBase(): Boolean {
         val oldControlBounds = controlFrame.bounds
         val controlVerticalInset = controlFrame.insets.top + controlFrame.insets.bottom
 
@@ -93,6 +93,8 @@ class WindowBoundsHandler(
             oldControlBounds.width,
             controlVerticalInset,
         )
+
+        return controlDeltaY != 0
     }
 
     public fun focusControlPane(shouldFocus: Boolean) {
