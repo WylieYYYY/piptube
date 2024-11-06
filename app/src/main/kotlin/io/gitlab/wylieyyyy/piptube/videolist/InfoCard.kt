@@ -15,7 +15,7 @@ import kotlinx.coroutines.launch
 class InfoCard(
     private val labelText: String? = null,
     private val scope: CoroutineScope = MainScope(),
-    private val navigate: (suspend () -> Unit)? = null,
+    private val navigate: (suspend (InfoCard) -> Unit)? = null,
 ) : HBox() {
     public var text
         get() = label.text
@@ -37,7 +37,7 @@ class InfoCard(
         if (navigate != null) {
             onMouseClicked =
                 handler {
-                    if (it.button == MouseButton.PRIMARY) navigate.invoke()
+                    if (it.button == MouseButton.PRIMARY) navigate.invoke(this)
                 }
         }
     }

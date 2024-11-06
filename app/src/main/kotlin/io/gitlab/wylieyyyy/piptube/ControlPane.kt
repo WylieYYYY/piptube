@@ -32,9 +32,11 @@ import kotlin.collections.mutableListOf
 
 class VideoListGenerator(
     public val topNodes: List<Node> = listOf(),
-    public val seenItems: MutableList<InfoItem> = mutableListOf(),
+    seenItems: List<InfoItem> = listOf(),
     private val extractor: ListExtractor<out InfoItem>? = null,
 ) {
+    public val seenItems = seenItems.toMutableList<InfoItem>()
+
     private val sentinelInitialPage = ListExtractor.InfoItemsPage(listOf(), null, listOf())
     private var currentPage: ListExtractor.InfoItemsPage<out InfoItem> = sentinelInitialPage
 
@@ -42,7 +44,11 @@ class VideoListGenerator(
         return extractor == null || currentPage !== sentinelInitialPage
     }
 
-    public fun isExhausted() = currentPage === ListExtractor.InfoItemsPage.emptyPage<InfoItem>()
+    public fun isExhausted(): Boolean {
+        return extractor == null ||
+            (currentPage !== sentinelInitialPage && !currentPage.hasNextPage()) ||
+            currentPage === ListExtractor.InfoItemsPage.emptyPage<InfoItem>()
+    }
 
     public suspend fun unseenItems(): List<InfoItem> {
         if (extractor == null) return listOf()
@@ -97,6 +103,8 @@ class ControlPane(
 
     @FXML private lateinit var progress: ProgressIndicator
 
+    private lateinit var subscriptionCache: SubscriptionCache
+
     init {
         val loader = FXMLLoader(this::class.java.getResource("control_pane.fxml"))
         loader.setRoot(this)
@@ -136,6 +144,32 @@ class ControlPane(
 
         videoList.children.addListener { _: Observable ->
             progress.setVisible(videoList.children.isEmpty())
+        }
+
+        scope.launch {
+            withClearedVideoList {
+                subscriptionCache =
+                    withContext(Dispatchers.IO) {
+                        SubscriptionCache.fromCacheOrNew()
+                    }
+                val updateCard =
+                    InfoCard("Update subscription...") {
+                        val channels = listOf<ChannelInfoItem>()
+                        withClearedVideoList {
+                            withContext(Dispatchers.IO) {
+                                subscriptionCache.fetchUnseenItems(channels)
+                            }
+                            Pair(
+                                TabIdentifier.SUBSCRIPTION,
+                                VideoListGenerator(topNodes = listOf(it), seenItems = subscriptionCache.seenItems),
+                            )
+                        }
+                    }
+                Pair(
+                    TabIdentifier.SUBSCRIPTION,
+                    VideoListGenerator(topNodes = listOf(updateCard), seenItems = subscriptionCache.seenItems),
+                )
+            }
         }
     }
 
@@ -227,19 +261,16 @@ class ControlPane(
             },
         )
 
-        if (generator.isExhausted()) {
-            videoList.children.add(InfoCard("No video is available."))
-            return
+        if (!generator.isExhausted()) {
+            videoList.children.add(
+                InfoCard("Load more...", scope) {
+                    videoList.children.last().setVisible(false)
+                    val index = videoList.children.lastIndex
+                    addToVideoList(generator, true)
+                    videoList.children.removeAt(index)
+                },
+            )
         }
-
-        videoList.children.add(
-            InfoCard("Load more...", scope) {
-                videoList.children.last().setVisible(false)
-                val index = videoList.children.lastIndex
-                addToVideoList(generator, true)
-                videoList.children.removeAt(index)
-            },
-        )
     }
 
     private fun <T : Event> handler(block: suspend (event: T) -> Unit): EventHandler<T> =
