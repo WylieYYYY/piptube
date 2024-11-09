@@ -16,7 +16,7 @@
       <Button fx:id="button" maxWidth="Infinity">
          <prefHeight><ChannelCard fx:constant="HEIGHT" /></prefHeight>
       </Button>
-      <HBox mouseTransparent="true">
+      <HBox pickOnBounds="false">
          <spacing><ChannelCard fx:constant="SPACING" /></spacing>
          <padding>
             <Insets>
@@ -24,13 +24,20 @@
             </Insets>
          </padding>
          <children>
-            <Circle fx:id="avatarCircle">
-               <radius><ChannelCard fx:constant="AVATAR_RADIUS" /></radius>
-            </Circle>
-            <VBox>
-               <Label fx:id="nameLabel" text="Unknown Artist" />
-               <Label fx:id="descriptionLabel" text="Unknown Description" />
-            </VBox>
+            <HBox mouseTransparent="true">
+               <HBox.hgrow>ALWAYS</HBox.hgrow>
+               <spacing><ChannelCard fx:constant="SPACING" /></spacing>
+               <children>
+                  <Circle fx:id="avatarCircle">
+                     <radius><ChannelCard fx:constant="AVATAR_RADIUS" /></radius>
+                  </Circle>
+                  <VBox>
+                     <Label fx:id="nameLabel" text="Unknown Artist" />
+                     <Label fx:id="descriptionLabel" text="Unknown Description" />
+                  </VBox>
+               </children>
+            </HBox>
+            <Button fx:id="subscribeButton" text="+" maxHeight="Infinity" />
          </children>
       </HBox>
    </children>

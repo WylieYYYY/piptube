@@ -29,6 +29,7 @@ import org.schabi.newpipe.extractor.channel.ChannelInfoItem
 import org.schabi.newpipe.extractor.search.SearchExtractor.NothingFoundException
 import org.schabi.newpipe.extractor.stream.StreamInfoItem
 import kotlin.collections.mutableListOf
+import kotlin.getOrThrow
 
 class VideoListGenerator(
     public val topNodes: List<Node> = listOf(),
@@ -103,6 +104,7 @@ class ControlPane(
 
     @FXML private lateinit var progress: ProgressIndicator
 
+    private lateinit var subscription: Subscription
     private lateinit var subscriptionCache: SubscriptionCache
 
     init {
@@ -148,17 +150,12 @@ class ControlPane(
 
         scope.launch {
             withClearedVideoList {
-                subscriptionCache =
-                    withContext(Dispatchers.IO) {
-                        SubscriptionCache.fromCacheOrNew()
-                    }
+                subscription = Subscription.fromStorageOrNew()
+                subscriptionCache = SubscriptionCache.fromCacheOrNew()
                 val updateCard =
                     InfoCard("Update subscription...") {
-                        val channels = listOf<ChannelInfoItem>()
                         withClearedVideoList {
-                            withContext(Dispatchers.IO) {
-                                subscriptionCache.fetchUnseenItems(channels)
-                            }
+                            subscriptionCache.fetchUnseenItems(subscription.channels)
                             Pair(
                                 TabIdentifier.SUBSCRIPTION,
                                 VideoListGenerator(topNodes = listOf(it), seenItems = subscriptionCache.seenItems),
@@ -182,25 +179,29 @@ class ControlPane(
 
     public suspend fun withClearedVideoList(block: suspend () -> Pair<TabIdentifier, VideoListGenerator>) {
         clearVideoList()
-        AutoCloseable { tabList.setDisable(false) }.use {
-            val (identifier, generator) = block()
 
-            val matchedTab = tabList.tabs.firstOrNull { it.id == identifier.toString() }
-            val targetTab =
-                matchedTab ?: Tab().apply {
-                    userData = generator
-                    id = identifier.toString()
-                    text = identifier.toString()
-                    tabList.tabs.add(this)
-                }
+        val (identifier, generator) =
+            runCatching {
+                block()
+            }.recoverCatching {
+                tabList.setDisable(false)
+                throw it
+            }.getOrThrow()
 
-            targetTab.userData = generator
-            if (tabList.selectionModel.selectedItem == matchedTab) {
-                clearVideoList()
-                addToVideoList(generator)
-            } else {
-                tabList.selectionModel.select(targetTab)
+        val matchedTab = tabList.tabs.firstOrNull { it.id == identifier.toString() }
+        val targetTab =
+            matchedTab ?: Tab().apply {
+                userData = generator
+                id = identifier.toString()
+                text = identifier.toString()
+                tabList.tabs.add(this)
             }
+
+        targetTab.userData = generator
+        if (tabList.selectionModel.selectedItem == matchedTab) {
+            addToVideoList(generator)
+        } else {
+            tabList.selectionModel.select(targetTab)
         }
     }
 
@@ -213,8 +214,6 @@ class ControlPane(
         generator: VideoListGenerator,
         unseenOnly: Boolean = false,
     ) {
-        tabList.setDisable(false)
-
         val items =
             if (generator.isProper() && !unseenOnly) {
                 generator.seenItems
@@ -225,6 +224,7 @@ class ControlPane(
 
         if (generator.topNodes.isEmpty() && items.isEmpty()) {
             videoList.children.add(InfoCard("No video is available."))
+            tabList.setDisable(false)
             return
         }
 
@@ -234,7 +234,7 @@ class ControlPane(
             items.mapNotNull {
                 when (it) {
                     is ChannelInfoItem ->
-                        ChannelCard(it, scope) {
+                        ChannelCard(it, scope, subscription) {
                             withClearedVideoList {
                                 Pair(
                                     TabIdentifier(TabIdentifier.TabType.CHANNEL, it.name),
@@ -271,6 +271,8 @@ class ControlPane(
                 },
             )
         }
+
+        tabList.setDisable(false)
     }
 
     private fun <T : Event> handler(block: suspend (event: T) -> Unit): EventHandler<T> =
