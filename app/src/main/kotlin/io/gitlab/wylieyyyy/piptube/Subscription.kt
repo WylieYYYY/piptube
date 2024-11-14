@@ -13,6 +13,7 @@ import kotlinx.serialization.KSerializer
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.Transient
 import kotlinx.serialization.builtins.ByteArraySerializer
+import kotlinx.serialization.builtins.SetSerializer
 import kotlinx.serialization.cbor.Cbor
 import kotlinx.serialization.descriptors.SerialDescriptor
 import kotlinx.serialization.encoding.Decoder
@@ -27,6 +28,7 @@ import java.io.FileNotFoundException
 import java.io.FileOutputStream
 import java.io.ObjectInputStream
 import java.io.ObjectOutputStream
+import java.util.TreeSet
 import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.io.path.Path
 import kotlin.time.DurationUnit
@@ -64,6 +66,31 @@ open class JavaSerializableSerializer<T : JavaSerializable>(private val clazz: C
 
 object StreamInfoItemSerializer : JavaSerializableSerializer<StreamInfoItem>(StreamInfoItem::class.java)
 
+private val reverseTimeComparator =
+    Comparator.comparing { item: StreamInfoItem ->
+        item.uploadDate?.offsetDateTime()?.toEpochSecond() ?: -1
+    }.reversed()
+
+private val uniqueStreamComparator =
+    Comparator.comparing(StreamInfoItem::getServiceId).thenComparing(StreamInfoItem::getUrl)
+
+object StreamInfoItemTreeSetSerializer : KSerializer<TreeSet<StreamInfoItem>> {
+    override val descriptor: SerialDescriptor = SetSerializer(StreamInfoItemSerializer).descriptor
+
+    override fun serialize(
+        encoder: Encoder,
+        value: TreeSet<StreamInfoItem>,
+    ) {
+        encoder.encodeSerializableValue(SetSerializer(StreamInfoItemSerializer), value)
+    }
+
+    override fun deserialize(decoder: Decoder): TreeSet<StreamInfoItem> {
+        return TreeSet(reverseTimeComparator.then(uniqueStreamComparator)).apply {
+            addAll(decoder.decodeSerializableValue(SetSerializer(StreamInfoItemSerializer)))
+        }
+    }
+}
+
 @Serializable
 public data class ChannelIdentifier(public val serviceId: Int, public val url: String) {
     public constructor(channel: ChannelInfoItem) : this(channel.serviceId, channel.url)
@@ -71,7 +98,7 @@ public data class ChannelIdentifier(public val serviceId: Int, public val url: S
 
 @OptIn(ExperimentalSerializationApi::class)
 @Serializable
-data class Subscription private constructor(public val channels: MutableSet<ChannelIdentifier>) {
+data class Subscription private constructor(private val channels: MutableSet<ChannelIdentifier>) {
     companion object {
         public suspend fun fromStorageOrNew(): Subscription {
             return withContext(Dispatchers.IO) {
@@ -105,6 +132,12 @@ data class Subscription private constructor(public val channels: MutableSet<Chan
 
     @Transient private val hasPending = AtomicBoolean(false)
 
+    public suspend fun channels(): List<ChannelIdentifier> {
+        return setMutex.withLock {
+            channels.toList()
+        }
+    }
+
     public fun getIsSubscribed(channel: ChannelIdentifier) = channel in channels
 
     public suspend fun toggle(channel: ChannelIdentifier): Boolean {
@@ -134,7 +167,8 @@ data class Subscription private constructor(public val channels: MutableSet<Chan
 @OptIn(ExperimentalSerializationApi::class)
 @Serializable
 data class SubscriptionCache private constructor(
-    public val seenItems: MutableList<
+    @Serializable(StreamInfoItemTreeSetSerializer::class)
+    private val seenItems: TreeSet<
         @Serializable(StreamInfoItemSerializer::class)
         StreamInfoItem,
     >,
@@ -176,28 +210,23 @@ data class SubscriptionCache private constructor(
             }
     }
 
-    @Transient private val reverseTimeComparator =
-        Comparator { left: StreamInfoItem, right: StreamInfoItem ->
-            val leftSeconds = left.uploadDate?.offsetDateTime()?.toEpochSecond()
-            val rightSeconds = right.uploadDate?.offsetDateTime()?.toEpochSecond()
+    @Transient private val setMutex = Mutex()
 
-            if (leftSeconds == null) {
-                -1
-            } else if (rightSeconds == null) {
-                1
-            } else {
-                rightSeconds.compareTo(leftSeconds)
-            }
+    public constructor() : this(TreeSet(reverseTimeComparator.then(uniqueStreamComparator)), 0)
+
+    public suspend fun seenItems(): List<StreamInfoItem> {
+        return setMutex.withLock {
+            seenItems.toList()
         }
+    }
 
-    public constructor() : this(mutableListOf(), 0)
-
-    public suspend fun fetchUnseenItems(channels: Iterable<ChannelIdentifier>) {
+    public suspend fun fetchUnseenItems(
+        channels: Iterable<ChannelIdentifier>,
+        ignoreCooldown: Boolean = false,
+    ) {
         withContext(Dispatchers.IO) {
             val currentTime = System.currentTimeMillis() / 1.toDuration(DurationUnit.SECONDS).inWholeMilliseconds
-            if (lastUpdated + REFRESH_COOLDOWN_SECONDS > currentTime) return@withContext
-
-            val items = mutableListOf<StreamInfoItem>()
+            if (lastUpdated + REFRESH_COOLDOWN_SECONDS > currentTime && !ignoreCooldown) return@withContext
 
             for (channel in channels) {
                 val extractor = NewPipe.getService(channel.serviceId).getFeedExtractor(channel.url)
@@ -205,17 +234,17 @@ data class SubscriptionCache private constructor(
                     VideoListGenerator(extractor = extractor).unseenItems()
                         .filterIsInstance<StreamInfoItem>()
 
-                items.addAll(
-                    unseenStreams.filter {
-                        it.uploadDate?.offsetDateTime()?.toEpochSecond()?.let {
-                            it > lastUpdated
-                        } ?: false
-                    },
-                )
+                setMutex.withLock {
+                    seenItems.addAll(
+                        unseenStreams.filter {
+                            it.uploadDate?.offsetDateTime()?.toEpochSecond()?.let {
+                                it > lastUpdated || ignoreCooldown
+                            } ?: false
+                        },
+                    )
+                }
             }
 
-            items.sortWith(reverseTimeComparator)
-            seenItems.addAll(0, items)
             lastUpdated = currentTime
 
             cache.await().put("subscription") {

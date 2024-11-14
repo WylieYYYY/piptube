@@ -155,16 +155,22 @@ class ControlPane(
                 val updateCard =
                     InfoCard("Update subscription...") {
                         withClearedVideoList {
-                            subscriptionCache.fetchUnseenItems(subscription.channels)
+                            subscriptionCache.fetchUnseenItems(subscription.channels())
                             Pair(
                                 TabIdentifier.SUBSCRIPTION,
-                                VideoListGenerator(topNodes = listOf(it), seenItems = subscriptionCache.seenItems),
+                                VideoListGenerator(
+                                    topNodes = listOf(it),
+                                    seenItems = subscriptionCache.seenItems(),
+                                ),
                             )
                         }
                     }
                 Pair(
                     TabIdentifier.SUBSCRIPTION,
-                    VideoListGenerator(topNodes = listOf(updateCard), seenItems = subscriptionCache.seenItems),
+                    VideoListGenerator(
+                        topNodes = listOf(updateCard),
+                        seenItems = subscriptionCache.seenItems(),
+                    ),
                 )
             }
         }
@@ -234,12 +240,12 @@ class ControlPane(
             items.mapNotNull {
                 when (it) {
                     is ChannelInfoItem ->
-                        ChannelCard(it, scope, subscription) {
+                        ChannelCard(it, scope, subscription, subscriptionCache) {
                             withClearedVideoList {
                                 Pair(
                                     TabIdentifier(TabIdentifier.TabType.CHANNEL, it.name),
                                     VideoListGenerator(
-                                        seenItems = mutableListOf(it),
+                                        seenItems = listOf(it),
                                         extractor = streamingService.getFeedExtractor(it.url),
                                     ),
                                 )

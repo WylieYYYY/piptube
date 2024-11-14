@@ -2,6 +2,7 @@ package io.gitlab.wylieyyyy.piptube.videolist
 
 import io.gitlab.wylieyyyy.piptube.ChannelIdentifier
 import io.gitlab.wylieyyyy.piptube.Subscription
+import io.gitlab.wylieyyyy.piptube.SubscriptionCache
 import javafx.event.Event
 import javafx.event.EventHandler
 import javafx.fxml.FXML
@@ -27,6 +28,7 @@ class ChannelCard(
     private val channelInfo: ChannelInfoItem,
     private val scope: CoroutineScope,
     private val subscription: Subscription,
+    private val subscriptionCache: SubscriptionCache,
     private val navigate: suspend () -> Unit,
 ) : StackPane() {
     companion object {
@@ -76,7 +78,14 @@ class ChannelCard(
         subscribeButton.text = if (subscription.getIsSubscribed(ChannelIdentifier(channelInfo))) "-" else "+"
         subscribeButton.onAction =
             handler {
-                subscribeButton.text = if (subscription.toggle(ChannelIdentifier(channelInfo))) "-" else "+"
+                val isNowSubscribed = subscription.toggle(ChannelIdentifier(channelInfo))
+                subscribeButton.text = if (isNowSubscribed) "-" else "+"
+                if (isNowSubscribed) {
+                    subscriptionCache.fetchUnseenItems(
+                        listOf(ChannelIdentifier(channelInfo)),
+                        ignoreCooldown = true,
+                    )
+                }
             }
         button.onAction = handler { navigate() }
     }
