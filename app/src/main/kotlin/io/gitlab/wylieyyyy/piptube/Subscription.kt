@@ -10,6 +10,7 @@ import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.KSerializer
+import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.Transient
 import kotlinx.serialization.builtins.ByteArraySerializer
@@ -26,6 +27,7 @@ import java.io.ByteArrayOutputStream
 import java.io.FileInputStream
 import java.io.FileNotFoundException
 import java.io.FileOutputStream
+import java.io.InputStream
 import java.io.ObjectInputStream
 import java.io.ObjectOutputStream
 import java.util.TreeSet
@@ -92,7 +94,10 @@ object StreamInfoItemTreeSetSerializer : KSerializer<TreeSet<StreamInfoItem>> {
 }
 
 @Serializable
-public data class ChannelIdentifier(public val serviceId: Int, public val url: String) {
+public data class ChannelIdentifier(
+    @SerialName("service_id") public val serviceId: Int,
+    public val url: String,
+) {
     public constructor(channel: ChannelInfoItem) : this(channel.serviceId, channel.url)
 }
 
@@ -123,7 +128,7 @@ data class Subscription private constructor(private val channels: MutableSet<Cha
             }
         }
 
-        val PATH =
+        private val PATH =
             Path(System.getProperty("user.home"))
                 .resolve(".config").resolve("piptube").resolve("subscription.cbor")
     }
@@ -132,10 +137,17 @@ data class Subscription private constructor(private val channels: MutableSet<Cha
 
     @Transient private val hasPending = AtomicBoolean(false)
 
+    public suspend fun import(
+        service: ImportService,
+        stream: InputStream,
+    ) {
+        val importedChannels = withContext(Dispatchers.IO) { service.importSubscription(stream) }
+        setMutex.withLock { channels.addAll(importedChannels) }
+        requestSave()
+    }
+
     public suspend fun channels(): List<ChannelIdentifier> {
-        return setMutex.withLock {
-            channels.toList()
-        }
+        return setMutex.withLock { channels.toList() }
     }
 
     public fun getIsSubscribed(channel: ChannelIdentifier) = channel in channels
@@ -162,6 +174,10 @@ data class Subscription private constructor(private val channels: MutableSet<Cha
             }
         }
     }
+}
+
+private fun <T> serializer(): KSerializer<T> {
+    throw NotImplementedError("Serializer implementation should be provided by the plugin")
 }
 
 @OptIn(ExperimentalSerializationApi::class)
@@ -200,7 +216,7 @@ data class SubscriptionCache private constructor(
         private val REFRESH_COOLDOWN_SECONDS = 30.toDuration(DurationUnit.MINUTES).inWholeSeconds
 
         private val cache =
-            MainScope().async {
+            MainScope().async(Dispatchers.IO) {
                 val path = Path(System.getProperty("user.home")).resolve(".cache").resolve("piptube")
                 // TODO: fail mkdirs
                 path.toFile().mkdirs()

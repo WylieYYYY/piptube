@@ -2,6 +2,7 @@ package io.gitlab.wylieyyyy.piptube
 
 import io.gitlab.wylieyyyy.piptube.videolist.ChannelCard
 import io.gitlab.wylieyyyy.piptube.videolist.InfoCard
+import io.gitlab.wylieyyyy.piptube.videolist.SettingsPage
 import io.gitlab.wylieyyyy.piptube.videolist.VideoCard
 import javafx.beans.Observable
 import javafx.beans.value.ChangeListener
@@ -125,7 +126,10 @@ class ControlPane(
         menuButton.onAction =
             handler {
                 withClearedVideoList {
-                    Pair(TabIdentifier.SETTINGS, VideoListGenerator())
+                    Pair(
+                        TabIdentifier.SETTINGS,
+                        VideoListGenerator(topNodes = listOf(SettingsPage(scope, subscription))),
+                    )
                 }
             }
 
