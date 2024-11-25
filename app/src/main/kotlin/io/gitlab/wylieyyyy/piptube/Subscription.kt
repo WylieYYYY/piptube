@@ -5,6 +5,10 @@ import com.mayakapps.kache.KacheStrategy
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.MainScope
 import kotlinx.coroutines.async
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
@@ -239,11 +243,11 @@ data class SubscriptionCache private constructor(
     public suspend fun fetchUnseenItems(
         channels: Iterable<ChannelIdentifier>,
         ignoreCooldown: Boolean = false,
-    ) {
-        withContext(Dispatchers.IO) {
-            val currentTime = System.currentTimeMillis() / 1.toDuration(DurationUnit.SECONDS).inWholeMilliseconds
-            if (lastUpdated + REFRESH_COOLDOWN_SECONDS > currentTime && !ignoreCooldown) return@withContext
+    ): Flow<ChannelIdentifier> {
+        val currentTime = System.currentTimeMillis() / 1.toDuration(DurationUnit.SECONDS).inWholeMilliseconds
+        if (lastUpdated + REFRESH_COOLDOWN_SECONDS > currentTime && !ignoreCooldown) return flowOf()
 
+        return flow {
             for (channel in channels) {
                 val extractor = NewPipe.getService(channel.serviceId).getFeedExtractor(channel.url)
                 val unseenStreams =
@@ -259,6 +263,8 @@ data class SubscriptionCache private constructor(
                         },
                     )
                 }
+
+                emit(channel)
             }
 
             lastUpdated = currentTime
@@ -270,6 +276,6 @@ data class SubscriptionCache private constructor(
                 }
                 true
             }
-        }
+        }.flowOn(Dispatchers.IO)
     }
 }

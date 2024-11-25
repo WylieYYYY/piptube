@@ -3,6 +3,7 @@ package io.gitlab.wylieyyyy.piptube
 import io.gitlab.wylieyyyy.piptube.videolist.ChannelCard
 import io.gitlab.wylieyyyy.piptube.videolist.InfoCard
 import io.gitlab.wylieyyyy.piptube.videolist.SettingsPage
+import io.gitlab.wylieyyyy.piptube.videolist.SubscriptionPage
 import io.gitlab.wylieyyyy.piptube.videolist.VideoCard
 import javafx.beans.Observable
 import javafx.beans.value.ChangeListener
@@ -29,15 +30,19 @@ import org.schabi.newpipe.extractor.StreamingService
 import org.schabi.newpipe.extractor.channel.ChannelInfoItem
 import org.schabi.newpipe.extractor.search.SearchExtractor.NothingFoundException
 import org.schabi.newpipe.extractor.stream.StreamInfoItem
-import kotlin.collections.mutableListOf
 import kotlin.getOrThrow
 
 class VideoListGenerator(
-    public val topNodes: List<Node> = listOf(),
-    seenItems: List<InfoItem> = listOf(),
+    seenItems: List<VideoListItem> = listOf(),
     private val extractor: ListExtractor<out InfoItem>? = null,
 ) {
-    public val seenItems = seenItems.toMutableList<InfoItem>()
+    sealed class VideoListItem {
+        data class InfoItem(public val item: org.schabi.newpipe.extractor.InfoItem) : VideoListItem()
+
+        data class Node(public val node: javafx.scene.Node) : VideoListItem()
+    }
+
+    public val seenItems = seenItems.toMutableList<VideoListItem>()
 
     private val sentinelInitialPage = ListExtractor.InfoItemsPage(listOf(), null, listOf())
     private var currentPage: ListExtractor.InfoItemsPage<out InfoItem> = sentinelInitialPage
@@ -52,23 +57,28 @@ class VideoListGenerator(
             currentPage === ListExtractor.InfoItemsPage.emptyPage<InfoItem>()
     }
 
-    public suspend fun unseenItems(): List<InfoItem> {
+    public suspend fun unseenItems(): List<VideoListItem> {
         if (extractor == null) return listOf()
 
         return withContext(Dispatchers.IO) {
             // TODO: ExtractionException, IOException
             extractor.fetchPage()
             currentPage = nextPage()
+
             // TODO: ExtractionException, IOException
-            runCatching {
-                seenItems.addAll(currentPage.items)
-                currentPage.items
-            }.recoverCatching {
-                when (it) {
-                    is NothingFoundException -> listOf()
-                    else -> throw it
-                }
-            }.getOrThrow()
+            val items =
+                runCatching {
+                    currentPage.items
+                }.recoverCatching {
+                    when (it) {
+                        is NothingFoundException -> listOf()
+                        else -> throw it
+                    }
+                }.getOrThrow()
+
+            items.map(VideoListItem::InfoItem).apply {
+                seenItems.addAll(this)
+            }
         }
     }
 
@@ -125,10 +135,11 @@ class ControlPane(
 
         menuButton.onAction =
             handler {
+                val page = SettingsPage(scope, subscription)
                 withClearedVideoList {
                     Pair(
                         TabIdentifier.SETTINGS,
-                        VideoListGenerator(topNodes = listOf(SettingsPage(scope, subscription))),
+                        VideoListGenerator(seenItems = listOf(VideoListGenerator.VideoListItem.Node(page))),
                     )
                 }
             }
@@ -156,24 +167,13 @@ class ControlPane(
             withClearedVideoList {
                 subscription = Subscription.fromStorageOrNew()
                 subscriptionCache = SubscriptionCache.fromCacheOrNew()
-                val updateCard =
-                    InfoCard("Update subscription...") {
-                        withClearedVideoList {
-                            subscriptionCache.fetchUnseenItems(subscription.channels())
-                            Pair(
-                                TabIdentifier.SUBSCRIPTION,
-                                VideoListGenerator(
-                                    topNodes = listOf(it),
-                                    seenItems = subscriptionCache.seenItems(),
-                                ),
-                            )
-                        }
-                    }
+                val page = SubscriptionPage(controller, subscription, subscriptionCache)
                 Pair(
                     TabIdentifier.SUBSCRIPTION,
                     VideoListGenerator(
-                        topNodes = listOf(updateCard),
-                        seenItems = subscriptionCache.seenItems(),
+                        seenItems =
+                            listOf(VideoListGenerator.VideoListItem.Node(page)) +
+                                subscriptionCache.seenItems().map(VideoListGenerator.VideoListItem::InfoItem),
                     ),
                 )
             }
@@ -232,41 +232,17 @@ class ControlPane(
                 if (unseenOnly) unseenItems else generator.seenItems
             }
 
-        if (generator.topNodes.isEmpty() && items.isEmpty()) {
+        if (items.isEmpty()) {
             videoList.children.add(InfoCard("No video is available."))
             tabList.setDisable(false)
             return
         }
 
-        videoList.children.addAll(generator.topNodes)
-
         videoList.children.addAll(
             items.mapNotNull {
                 when (it) {
-                    is ChannelInfoItem ->
-                        ChannelCard(it, scope, subscription, subscriptionCache) {
-                            withClearedVideoList {
-                                Pair(
-                                    TabIdentifier(TabIdentifier.TabType.CHANNEL, it.name),
-                                    VideoListGenerator(
-                                        seenItems = listOf(it),
-                                        extractor = streamingService.getFeedExtractor(it.url),
-                                    ),
-                                )
-                            }
-                        }
-                    is StreamInfoItem ->
-                        VideoCard(it, scope) {
-                            windowBoundsHandler.resizeToBase()
-                            withClearedVideoList {
-                                // TODO: ExtractionException
-                                val relatedInfo =
-                                    controller.gotoVideoUrl(it.url)
-                                        .relatedItems?.items?.toMutableList() ?: mutableListOf()
-                                Pair(TabIdentifier.RELATED, VideoListGenerator(seenItems = relatedInfo))
-                            }
-                        }
-                    else -> null
+                    is VideoListGenerator.VideoListItem.Node -> it.node
+                    is VideoListGenerator.VideoListItem.InfoItem -> createStandardCard(it.item)
                 }
             },
         )
@@ -283,6 +259,35 @@ class ControlPane(
         }
 
         tabList.setDisable(false)
+    }
+
+    private fun createStandardCard(item: InfoItem): Node? {
+        return when (item) {
+            is ChannelInfoItem ->
+                ChannelCard(item, scope, subscription, subscriptionCache) {
+                    withClearedVideoList {
+                        Pair(
+                            TabIdentifier(TabIdentifier.TabType.CHANNEL, item.name),
+                            VideoListGenerator(
+                                seenItems = listOf(VideoListGenerator.VideoListItem.InfoItem(item)),
+                                extractor = streamingService.getFeedExtractor(item.url),
+                            ),
+                        )
+                    }
+                }
+            is StreamInfoItem ->
+                VideoCard(item, scope) {
+                    windowBoundsHandler.resizeToBase()
+                    withClearedVideoList {
+                        // TODO: ExtractionException
+                        val relatedInfo =
+                            controller.gotoVideoUrl(item.url)
+                                .relatedItems?.items?.map(VideoListGenerator.VideoListItem::InfoItem) ?: listOf()
+                        Pair(TabIdentifier.RELATED, VideoListGenerator(seenItems = relatedInfo))
+                    }
+                }
+            else -> null
+        }
     }
 
     private fun <T : Event> handler(block: suspend (event: T) -> Unit): EventHandler<T> =

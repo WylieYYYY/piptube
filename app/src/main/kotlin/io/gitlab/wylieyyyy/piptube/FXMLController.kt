@@ -10,7 +10,6 @@ import org.schabi.newpipe.extractor.stream.StreamExtractor
 import java.util.Stack
 import javax.swing.JFrame
 import javax.swing.JWindow
-import kotlin.collections.mutableListOf
 
 class FXMLController(private val controlFrame: JFrame, private val videoWindow: JWindow) {
     companion object {
@@ -67,7 +66,11 @@ class FXMLController(private val controlFrame: JFrame, private val videoWindow: 
                 // TODO: ExtractionException
                 Pair(
                     TabIdentifier.RELATED,
-                    VideoListGenerator(seenItems = extractor.relatedItems?.items?.toMutableList() ?: mutableListOf()),
+                    VideoListGenerator(
+                        seenItems =
+                            extractor.relatedItems?.items
+                                ?.map(VideoListGenerator.VideoListItem::InfoItem) ?: listOf(),
+                    ),
                 )
             }
         }
