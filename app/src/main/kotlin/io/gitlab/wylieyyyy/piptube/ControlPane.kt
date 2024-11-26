@@ -36,8 +36,12 @@ class VideoListGenerator(
     seenItems: List<VideoListItem> = listOf(),
     private val extractor: ListExtractor<out InfoItem>? = null,
 ) {
+    companion object {
+        private const val PAGE_SIZE = 10
+    }
+
     sealed class VideoListItem {
-        data class InfoItem(public val item: org.schabi.newpipe.extractor.InfoItem) : VideoListItem()
+        data class InfoItem<T : org.schabi.newpipe.extractor.InfoItem>(public val item: T) : VideoListItem()
 
         data class Node(public val node: javafx.scene.Node) : VideoListItem()
     }
@@ -55,6 +59,15 @@ class VideoListGenerator(
         return extractor == null ||
             (currentPage !== sentinelInitialPage && !currentPage.hasNextPage()) ||
             currentPage === ListExtractor.InfoItemsPage.emptyPage<InfoItem>()
+    }
+
+    public suspend fun itemsFrom(index: Int): Pair<List<VideoListItem>, Boolean> {
+        val items = seenItems.asSequence().drop(index).take(PAGE_SIZE).toMutableList()
+        while (items.size < PAGE_SIZE && !isExhausted()) {
+            items.addAll(unseenItems())
+        }
+        val hasNext = index + PAGE_SIZE < seenItems.size || !isExhausted()
+        return Pair(items, hasNext)
     }
 
     public suspend fun unseenItems(): List<VideoListItem> {
@@ -167,7 +180,7 @@ class ControlPane(
             withClearedVideoList {
                 subscription = Subscription.fromStorageOrNew()
                 subscriptionCache = SubscriptionCache.fromCacheOrNew()
-                val page = SubscriptionPage(controller, subscription, subscriptionCache)
+                val page = SubscriptionPage(controller, subscription, subscriptionCache, progress)
                 Pair(
                     TabIdentifier.SUBSCRIPTION,
                     VideoListGenerator(
@@ -222,15 +235,9 @@ class ControlPane(
 
     private suspend fun addToVideoList(
         generator: VideoListGenerator,
-        unseenOnly: Boolean = false,
+        frameIndex: Int = 0,
     ) {
-        val items =
-            if (generator.isProper() && !unseenOnly) {
-                generator.seenItems
-            } else {
-                val unseenItems = generator.unseenItems()
-                if (unseenOnly) unseenItems else generator.seenItems
-            }
+        val (items, hasNext) = generator.itemsFrom(frameIndex)
 
         if (items.isEmpty()) {
             videoList.children.add(InfoCard("No video is available."))
@@ -242,17 +249,17 @@ class ControlPane(
             items.mapNotNull {
                 when (it) {
                     is VideoListGenerator.VideoListItem.Node -> it.node
-                    is VideoListGenerator.VideoListItem.InfoItem -> createStandardCard(it.item)
+                    is VideoListGenerator.VideoListItem.InfoItem<*> -> createStandardCard(it.item)
                 }
             },
         )
 
-        if (!generator.isExhausted()) {
+        if (hasNext) {
             videoList.children.add(
                 InfoCard("Load more...", scope) {
                     videoList.children.last().setVisible(false)
                     val index = videoList.children.lastIndex
-                    addToVideoList(generator, true)
+                    addToVideoList(generator, frameIndex + items.size)
                     videoList.children.removeAt(index)
                 },
             )

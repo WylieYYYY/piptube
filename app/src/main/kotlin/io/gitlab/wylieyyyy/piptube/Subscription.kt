@@ -252,16 +252,11 @@ data class SubscriptionCache private constructor(
                 val extractor = NewPipe.getService(channel.serviceId).getFeedExtractor(channel.url)
                 val unseenStreams =
                     VideoListGenerator(extractor = extractor).unseenItems()
-                        .filterIsInstance<StreamInfoItem>()
+                        .filterIsInstance<VideoListGenerator.VideoListItem.InfoItem<StreamInfoItem>>()
+                        .map { it.item }
 
                 setMutex.withLock {
-                    seenItems.addAll(
-                        unseenStreams.filter {
-                            it.uploadDate?.offsetDateTime()?.toEpochSecond()?.let {
-                                it > lastUpdated || ignoreCooldown
-                            } ?: false
-                        },
-                    )
+                    seenItems.addAll(unseenStreams)
                 }
 
                 emit(channel)
