@@ -1,7 +1,6 @@
 package io.gitlab.wylieyyyy.piptube
 
 import io.gitlab.wylieyyyy.piptube.videolist.ChannelCard
-import io.gitlab.wylieyyyy.piptube.videolist.InfoCard
 import io.gitlab.wylieyyyy.piptube.videolist.SettingsPage
 import io.gitlab.wylieyyyy.piptube.videolist.SubscriptionPage
 import io.gitlab.wylieyyyy.piptube.videolist.VideoCard
@@ -76,11 +75,11 @@ class VideoListGenerator(
         return withContext(Dispatchers.IO) {
             // TODO: ExtractionException, IOException
             extractor.fetchPage()
-            currentPage = nextPage()
 
             // TODO: ExtractionException, IOException
             val items =
                 runCatching {
+                    currentPage = nextPage()
                     currentPage.items
                 }.recoverCatching {
                     when (it) {
@@ -130,6 +129,7 @@ class ControlPane(
 
     private lateinit var subscription: Subscription
     private lateinit var subscriptionCache: SubscriptionCache
+    private var infiniteScrollHandler = ChangeListener<Number> { _, _, _ -> Unit }
 
     init {
         val loader = FXMLLoader(this::class.java.getResource("control_pane.fxml"))
@@ -201,6 +201,7 @@ class ControlPane(
     }
 
     public suspend fun withClearedVideoList(block: suspend () -> Pair<TabIdentifier, VideoListGenerator>) {
+        scrollPane.vvalueProperty().removeListener(infiniteScrollHandler)
         clearVideoList()
 
         val (identifier, generator) =
@@ -237,13 +238,10 @@ class ControlPane(
         generator: VideoListGenerator,
         frameIndex: Int = 0,
     ) {
+        scrollPane.vvalueProperty().removeListener(infiniteScrollHandler)
         val (items, hasNext) = generator.itemsFrom(frameIndex)
 
-        if (items.isEmpty()) {
-            videoList.children.add(InfoCard("No video is available."))
-            tabList.setDisable(false)
-            return
-        }
+        val oldScrollVvalue = scrollPane.vvalue
 
         videoList.children.addAll(
             items.mapNotNull {
@@ -255,15 +253,21 @@ class ControlPane(
         )
 
         if (hasNext) {
-            videoList.children.add(
-                InfoCard("Load more...", scope) {
-                    videoList.children.last().setVisible(false)
-                    val index = videoList.children.lastIndex
-                    addToVideoList(generator, frameIndex + items.size)
-                    videoList.children.removeAt(index)
-                },
-            )
+            infiniteScrollHandler =
+                ChangeListener { property, _, newValue ->
+                    scope.launch {
+                        if (newValue as Double > scrollPane.vmax - VideoCard.HEIGHT * 2) {
+                            property.removeListener(infiniteScrollHandler)
+                            addToVideoList(generator, frameIndex + items.size)
+                        }
+                    }
+                }
+            scrollPane.vvalueProperty().addListener(infiniteScrollHandler)
         }
+
+        videoList.autosize()
+        scrollPane.vmax = videoList.height
+        scrollPane.vvalue = oldScrollVvalue
 
         tabList.setDisable(false)
     }
