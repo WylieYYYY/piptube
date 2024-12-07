@@ -2,9 +2,10 @@
 
 <?import javafx.scene.control.Label?>
 <?import javafx.scene.control.ProgressIndicator?>
+<?import javafx.scene.image.ImageView?>
+<?import javafx.scene.layout.BorderPane?>
 <?import javafx.scene.layout.StackPane?>
 <?import javafx.scene.layout.VBox?>
-<?import javafx.scene.media.MediaView?>
 <?import javafx.scene.shape.Rectangle?>
 
 <?import javafx.scene.layout.Region?>
@@ -19,7 +20,7 @@
          <width><FXMLController fx:constant="BASE_WIDTH" /></width>
          <height><FXMLController fx:constant="BASE_HEIGHT" /></height>
       </Rectangle>
-      <MediaView fx:id="videoView" />
+      <ImageView fx:id="videoView" />
       <VBox fx:id="statusBar">
          <StackPane.alignment>BOTTOM_LEFT</StackPane.alignment>
          <maxHeight><Region fx:constant="USE_PREF_SIZE" /></maxHeight>
@@ -35,7 +36,10 @@
                   </Rectangle>
                </children>
             </StackPane>
-            <Label fx:id="titleLabel" visible="false" managed="false" text="Untitled Video" />
+            <BorderPane>
+               <left><Label fx:id="titleLabel" visible="false" managed="false" text="Untitled Video" /></left>
+               <right><Label fx:id="progressLabel" visible="false" managed="false" text="--:--/--:--" /></right>
+            </BorderPane>
          </children>
       </VBox>
       <ProgressIndicator fx:id="progress" visible="false" mouseTransparent="true">

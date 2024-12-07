@@ -8,32 +8,27 @@ import javafx.geometry.HorizontalDirection
 import javafx.scene.Parent
 import javafx.scene.control.Label
 import javafx.scene.control.ProgressIndicator
+import javafx.scene.image.ImageView
 import javafx.scene.input.MouseButton
 import javafx.scene.input.MouseEvent
 import javafx.scene.layout.StackPane
-import javafx.scene.media.Media
-import javafx.scene.media.MediaPlayer
-import javafx.scene.media.MediaPlayer.Status.DISPOSED
-import javafx.scene.media.MediaPlayer.Status.HALTED
-import javafx.scene.media.MediaPlayer.Status.PAUSED
-import javafx.scene.media.MediaPlayer.Status.PLAYING
-import javafx.scene.media.MediaPlayer.Status.READY
-import javafx.scene.media.MediaPlayer.Status.STALLED
-import javafx.scene.media.MediaPlayer.Status.STOPPED
-import javafx.scene.media.MediaPlayer.Status.UNKNOWN
-import javafx.scene.media.MediaView
 import javafx.scene.shape.Rectangle
 import javafx.util.Duration
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.MainScope
 import kotlinx.coroutines.cancelChildren
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.schabi.newpipe.extractor.StreamingService
 import org.schabi.newpipe.extractor.stream.StreamExtractor
+import uk.co.caprica.vlcj.factory.MediaPlayerFactory
+import uk.co.caprica.vlcj.javafx.videosurface.ImageViewVideoSurface
+import uk.co.caprica.vlcj.player.base.MediaPlayer
+import uk.co.caprica.vlcj.player.base.MediaPlayerEventAdapter
 import java.awt.Point
+import kotlin.time.DurationUnit
+import kotlin.time.toDuration
 
 class VideoPlayer(
     private val streamingService: StreamingService,
@@ -49,11 +44,9 @@ class VideoPlayer(
         public const val SEEKBAR_HEIGHT = 3
 
         public const val SEEKBAR_EXPANDED_HEIGHT = SEEKBAR_HEIGHT * 3
-
-        private const val VIDEO_PROGRESS_UPDATE_INTERVAL_MILLISECONDS = 1000L
     }
 
-    @FXML private lateinit var videoView: MediaView
+    @FXML private lateinit var videoView: ImageView
 
     @FXML private lateinit var progressBackgroundRectangle: Rectangle
 
@@ -61,10 +54,14 @@ class VideoPlayer(
 
     @FXML private lateinit var titleLabel: Label
 
+    @FXML private lateinit var progressLabel: Label
+
     @FXML private lateinit var progress: ProgressIndicator
 
     private var isMouseEventDrag = false
     private val videoViewCoroutineScope = MainScope()
+    private val mediaPlayerFactory = MediaPlayerFactory()
+    private val embeddedMediaPlayer = mediaPlayerFactory.mediaPlayers().newEmbeddedMediaPlayer()
 
     init {
         val loader = FXMLLoader(this::class.java.getResource("video_player.fxml"))
@@ -78,16 +75,32 @@ class VideoPlayer(
     private fun initialize() {
         stylesheets.add(this::class.java.getResource("video_player.css").toString())
 
+        embeddedMediaPlayer.videoSurface().set(ImageViewVideoSurface(videoView))
+
+        embeddedMediaPlayer.events().addMediaPlayerEventListener(
+            object : MediaPlayerEventAdapter() {
+                override fun buffering(
+                    mediaPlayer: MediaPlayer,
+                    newCache: Float,
+                ) {
+                    progress.setVisible(newCache != 100.toFloat())
+                }
+
+                override fun timeChanged(
+                    mediaPlayer: MediaPlayer,
+                    newTime: Long,
+                ) {
+                    scope.launch { updateVideoProgress() }
+                }
+            },
+        )
+
         videoView.onMouseClicked =
             handler {
                 if (isMouseEventDrag) return@handler
 
                 if (it.button == MouseButton.PRIMARY) {
-                    when (videoView.mediaPlayer.status!!) {
-                        READY, PLAYING -> videoView.mediaPlayer?.pause()
-                        PAUSED, STALLED, STOPPED -> videoView.mediaPlayer?.play()
-                        DISPOSED, HALTED, UNKNOWN -> Unit
-                    }
+                    embeddedMediaPlayer.controls().pause()
                 }
                 if (it.button == MouseButton.SECONDARY) controller.onBack()
                 if (it.button == MouseButton.MIDDLE && !windowBoundsHandler.resizeToBase()) {
@@ -99,12 +112,14 @@ class VideoPlayer(
         onMouseEntered =
             handler {
                 titleLabel.setVisible(true)
+                progressLabel.setVisible(true)
                 progressBackgroundRectangle.height = SEEKBAR_EXPANDED_HEIGHT.toDouble()
                 progressRectangle.height = SEEKBAR_EXPANDED_HEIGHT.toDouble()
             }
         onMouseExited =
             handler {
                 titleLabel.setVisible(false)
+                progressLabel.setVisible(false)
                 progressBackgroundRectangle.height = SEEKBAR_HEIGHT.toDouble()
                 progressRectangle.height = SEEKBAR_HEIGHT.toDouble()
             }
@@ -127,10 +142,11 @@ class VideoPlayer(
                 windowBoundsHandler.updateMove(Point(it.screenX.toInt(), it.screenY.toInt()))
             }
         titleLabel.managedProperty().bind(titleLabel.visibleProperty())
+        progressLabel.managedProperty().bind(progressLabel.visibleProperty())
     }
 
     public suspend fun updateVideo(url: String): StreamExtractor {
-        videoView.mediaPlayer?.dispose()
+        embeddedMediaPlayer.controls().stop()
         progress.setVisible(true)
 
         val extractor =
@@ -148,7 +164,7 @@ class VideoPlayer(
     }
 
     public fun updateVideo(extractor: StreamExtractor) {
-        videoView.mediaPlayer?.dispose()
+        embeddedMediaPlayer.controls().stop()
         progress.setVisible(true)
         videoViewCoroutineScope.coroutineContext.cancelChildren()
 
@@ -158,48 +174,36 @@ class VideoPlayer(
         scope.launch {
             // TODO: ExtractionException, no video stream
             val stream = extractor.videoStreams?.firstOrNull()!!
-            // TODO: IllegalArgumentException, UnsupportedOperationException, MediaException
-            val media = Media(stream.content)
-            // TODO: MediaException
-            val player = MediaPlayer(media)
-
-            videoViewCoroutineScope.launch {
-                // TODO: ParsingException
-                if (extractor.length > 0) updateVideoProgress(true)
-            }
-
-            player.onStalled =
-                object : Runnable {
-                    override fun run() = progress.setVisible(true)
-                }
-            player.onPlaying =
-                object : Runnable {
-                    override fun run() = progress.setVisible(false)
-                }
-
-            videoView.mediaPlayer = player
-            player.play()
+            // TODO: fail play
+            embeddedMediaPlayer.media().play(stream.content)
         }
     }
 
-    private tailrec suspend fun updateVideoProgress(repeat: Boolean) {
-        progressRectangle.width =
-            videoView.mediaPlayer.run {
-                currentTime.toMillis() / totalDuration.toMillis() * SEEKBAR_WIDTH
+    private fun updateVideoProgress() {
+        fun Long.toDurationString(): String {
+            return toDuration(DurationUnit.MILLISECONDS).toComponents { hours, minutes, seconds, _ ->
+                val minuteSecondPart =
+                    "${minutes.toString().padStart(2, '0')}:" +
+                        "${seconds.toString().padStart(2, '0')}"
+                if (hours != 0L) {
+                    "${hours.toString().padStart(2, '0')}:$minuteSecondPart"
+                } else {
+                    minuteSecondPart
+                }
             }
-
-        if (repeat) {
-            delay(VIDEO_PROGRESS_UPDATE_INTERVAL_MILLISECONDS)
-            updateVideoProgress(repeat)
         }
+
+        progressRectangle.width = embeddedMediaPlayer.status().time().toDouble() /
+            embeddedMediaPlayer.status().length() * SEEKBAR_WIDTH
+        progressLabel.text =
+            embeddedMediaPlayer.status().run {
+                time().toDurationString() + '/' + length().toDurationString()
+            }
     }
 
     private suspend fun handleSeekbarClicked(event: MouseEvent) {
-        videoView.mediaPlayer?.run {
-            val duration = totalDuration * event.x / SEEKBAR_WIDTH.toDouble()
-            seek(duration)
-            updateVideoProgress(false)
-        }
+        embeddedMediaPlayer.controls().setPosition((event.x / SEEKBAR_WIDTH).toFloat())
+        updateVideoProgress()
     }
 
     private fun <T : Event> handler(block: suspend (event: T) -> Unit): EventHandler<T> =
