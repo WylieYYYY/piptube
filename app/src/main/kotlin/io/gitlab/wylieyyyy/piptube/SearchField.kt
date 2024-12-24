@@ -41,10 +41,9 @@ class SearchField : TextField() {
         }
     }
 
-    private fun <T : Event> handler(block: suspend (event: T) -> Unit): EventHandler<T> =
-        object : EventHandler<T> {
-            override fun handle(event: T) {
-                scope.launch { block(event) }
-            }
+    private fun <T : Event> handler(block: suspend (event: T) -> Unit): EventHandler<T> = object : EventHandler<T> {
+        override fun handle(event: T) {
+            scope.launch { block(event) }
         }
+    }
 }

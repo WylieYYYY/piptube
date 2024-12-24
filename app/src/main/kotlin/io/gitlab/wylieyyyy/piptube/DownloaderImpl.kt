@@ -25,8 +25,9 @@ object DownloaderImpl : Downloader() {
         for ((headerName, headerValues) in request.headers()) {
             if (headerValues.size > 1) {
                 requestBuilder.removeHeader(headerName)
-                for (headerValue in headerValues)
+                for (headerValue in headerValues) {
                     requestBuilder.addHeader(headerName, headerValue)
+                }
             } else if (headerValues.size == 1) {
                 requestBuilder.header(headerName, headerValues[0])
             }

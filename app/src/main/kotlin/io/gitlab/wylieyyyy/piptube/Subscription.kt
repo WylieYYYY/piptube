@@ -90,10 +90,10 @@ object StreamInfoItemTreeSetSerializer : KSerializer<TreeSet<StreamInfoItem>> {
         encoder.encodeSerializableValue(SetSerializer(StreamInfoItemSerializer), value)
     }
 
-    override fun deserialize(decoder: Decoder): TreeSet<StreamInfoItem> {
-        return TreeSet(reverseTimeComparator.then(uniqueStreamComparator)).apply {
-            addAll(decoder.decodeSerializableValue(SetSerializer(StreamInfoItemSerializer)))
-        }
+    override fun deserialize(decoder: Decoder): TreeSet<StreamInfoItem> = TreeSet(
+        reverseTimeComparator.then(uniqueStreamComparator),
+    ).apply {
+        addAll(decoder.decodeSerializableValue(SetSerializer(StreamInfoItemSerializer)))
     }
 }
 
@@ -109,27 +109,25 @@ public data class ChannelIdentifier(
 @Serializable
 data class Subscription private constructor(private val channels: MutableSet<ChannelIdentifier>) {
     companion object {
-        public suspend fun fromStorageOrNew(): Subscription {
-            return withContext(Dispatchers.IO) {
-                // TODO: fail mkdirs
-                PATH.parent.toFile().mkdirs()
+        public suspend fun fromStorageOrNew(): Subscription = withContext(Dispatchers.IO) {
+            // TODO: fail mkdirs
+            PATH.parent.toFile().mkdirs()
 
-                runCatching {
-                    FileInputStream(PATH.toString()).use {
-                        // TODO: IOException, SerializationException
-                        Cbor.decodeFromByteArray<Subscription>(serializer(), it.readAllBytes())
+            runCatching {
+                FileInputStream(PATH.toString()).use {
+                    // TODO: IOException, SerializationException
+                    Cbor.decodeFromByteArray<Subscription>(serializer(), it.readAllBytes())
+                }
+            }.recoverCatching {
+                when (it) {
+                    is FileNotFoundException -> {
+                        val newSubscription = Subscription(mutableSetOf())
+                        newSubscription.requestSave()
+                        newSubscription
                     }
-                }.recoverCatching {
-                    when (it) {
-                        is FileNotFoundException -> {
-                            val newSubscription = Subscription(mutableSetOf())
-                            newSubscription.requestSave()
-                            newSubscription
-                        }
-                        else -> throw it
-                    }
-                }.getOrThrow()
-            }
+                    else -> throw it
+                }
+            }.getOrThrow()
         }
 
         private val PATH =
@@ -150,9 +148,7 @@ data class Subscription private constructor(private val channels: MutableSet<Cha
         requestSave()
     }
 
-    public suspend fun channels(): List<ChannelIdentifier> {
-        return setMutex.withLock { channels.toList() }
-    }
+    public suspend fun channels(): List<ChannelIdentifier> = setMutex.withLock { channels.toList() }
 
     public fun getIsSubscribed(channel: ChannelIdentifier) = channel in channels
 
@@ -180,9 +176,9 @@ data class Subscription private constructor(private val channels: MutableSet<Cha
     }
 }
 
-private fun <T> serializer(): KSerializer<T> {
-    throw NotImplementedError("Serializer implementation should be provided by the plugin")
-}
+private fun <T> serializer(): KSerializer<T> = throw NotImplementedError(
+    "Serializer implementation should be provided by the plugin",
+)
 
 @OptIn(ExperimentalSerializationApi::class)
 @Serializable
@@ -191,7 +187,7 @@ data class SubscriptionCache private constructor(
     private val seenItems: TreeSet<
         @Serializable(StreamInfoItemSerializer::class)
         StreamInfoItem,
-    >,
+        >,
     public var lastUpdated: Long,
 ) {
     companion object {
@@ -234,10 +230,8 @@ data class SubscriptionCache private constructor(
 
     public constructor() : this(TreeSet(reverseTimeComparator.then(uniqueStreamComparator)), 0)
 
-    public suspend fun seenItems(): List<StreamInfoItem> {
-        return setMutex.withLock {
-            seenItems.toList()
-        }
+    public suspend fun seenItems(): List<StreamInfoItem> = setMutex.withLock {
+        seenItems.toList()
     }
 
     public suspend fun fetchUnseenItems(

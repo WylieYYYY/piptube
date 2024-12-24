@@ -180,16 +180,16 @@ class VideoPlayer(
     }
 
     private fun updateVideoProgress() {
-        fun Long.toDurationString(): String {
-            return toDuration(DurationUnit.MILLISECONDS).toComponents { hours, minutes, seconds, _ ->
-                val minuteSecondPart =
-                    "${minutes.toString().padStart(2, '0')}:" +
-                        "${seconds.toString().padStart(2, '0')}"
-                if (hours != 0L) {
-                    "${hours.toString().padStart(2, '0')}:$minuteSecondPart"
-                } else {
-                    minuteSecondPart
-                }
+        fun Long.toDurationString(): String = toDuration(
+            DurationUnit.MILLISECONDS,
+        ).toComponents { hours, minutes, seconds, _ ->
+            val minuteSecondPart =
+                "${minutes.toString().padStart(2, '0')}:" +
+                    "${seconds.toString().padStart(2, '0')}"
+            if (hours != 0L) {
+                "${hours.toString().padStart(2, '0')}:$minuteSecondPart"
+            } else {
+                minuteSecondPart
             }
         }
 
@@ -206,21 +206,19 @@ class VideoPlayer(
         updateVideoProgress()
     }
 
-    private fun <T : Event> handler(block: suspend (event: T) -> Unit): EventHandler<T> =
-        object : EventHandler<T> {
-            override fun handle(event: T) {
-                scope.launch { block(event) }
-            }
+    private fun <T : Event> handler(block: suspend (event: T) -> Unit): EventHandler<T> = object : EventHandler<T> {
+        override fun handle(event: T) {
+            scope.launch { block(event) }
         }
+    }
 }
 
 operator fun Duration.times(other: Double): Duration = multiply(other)
 
 operator fun Duration.div(other: Double): Duration = divide(other)
 
-operator fun HorizontalDirection.not() =
-    if (this == HorizontalDirection.RIGHT) {
-        HorizontalDirection.LEFT
-    } else {
-        HorizontalDirection.RIGHT
-    }
+operator fun HorizontalDirection.not() = if (this == HorizontalDirection.RIGHT) {
+    HorizontalDirection.LEFT
+} else {
+    HorizontalDirection.RIGHT
+}

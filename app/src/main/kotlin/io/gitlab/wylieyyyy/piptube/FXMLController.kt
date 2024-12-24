@@ -51,9 +51,7 @@ class FXMLController(private val controlFrame: JFrame, private val videoWindow: 
 
     public fun scrollControlPane(event: ScrollEvent) = controlPane.scrollVideoList(event)
 
-    public suspend fun gotoVideoUrl(url: String): StreamExtractor {
-        return videoStack.push(player.updateVideo(url))
-    }
+    public suspend fun gotoVideoUrl(url: String): StreamExtractor = videoStack.push(player.updateVideo(url))
 
     public suspend fun onBack() {
         val lastVideo = videoStack.pop()
@@ -68,8 +66,8 @@ class FXMLController(private val controlFrame: JFrame, private val videoWindow: 
                     TabIdentifier.RELATED,
                     VideoListGenerator(
                         seenItems =
-                            extractor.relatedItems?.items
-                                ?.map(VideoListGenerator.VideoListItem::InfoItem) ?: listOf(),
+                        extractor.relatedItems?.items
+                            ?.map(VideoListGenerator.VideoListItem::InfoItem) ?: listOf(),
                     ),
                 )
             }

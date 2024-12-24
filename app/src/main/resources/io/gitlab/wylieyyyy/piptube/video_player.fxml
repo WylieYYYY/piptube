@@ -20,7 +20,10 @@
          <width><FXMLController fx:constant="BASE_WIDTH" /></width>
          <height><FXMLController fx:constant="BASE_HEIGHT" /></height>
       </Rectangle>
-      <ImageView fx:id="videoView" />
+      <ImageView fx:id="videoView" preserveRatio="true">
+         <fitWidth><FXMLController fx:constant="BASE_WIDTH" /></fitWidth>
+         <fitHeight><FXMLController fx:constant="BASE_HEIGHT" /></fitHeight>
+      </ImageView>
       <VBox fx:id="statusBar">
          <StackPane.alignment>BOTTOM_LEFT</StackPane.alignment>
          <maxHeight><Region fx:constant="USE_PREF_SIZE" /></maxHeight>

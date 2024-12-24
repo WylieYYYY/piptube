@@ -50,15 +50,11 @@ class VideoListGenerator(
     private val sentinelInitialPage = ListExtractor.InfoItemsPage(listOf(), null, listOf())
     private var currentPage: ListExtractor.InfoItemsPage<out InfoItem> = sentinelInitialPage
 
-    public fun isProper(): Boolean {
-        return extractor == null || currentPage !== sentinelInitialPage
-    }
+    public fun isProper(): Boolean = extractor == null || currentPage !== sentinelInitialPage
 
-    public fun isExhausted(): Boolean {
-        return extractor == null ||
-            (currentPage !== sentinelInitialPage && !currentPage.hasNextPage()) ||
-            currentPage === ListExtractor.InfoItemsPage.emptyPage<InfoItem>()
-    }
+    public fun isExhausted(): Boolean = extractor == null ||
+        (currentPage !== sentinelInitialPage && !currentPage.hasNextPage()) ||
+        currentPage === ListExtractor.InfoItemsPage.emptyPage<InfoItem>()
 
     public suspend fun itemsFrom(index: Int): Pair<List<VideoListItem>, Boolean> {
         val items = seenItems.asSequence().drop(index).take(PAGE_SIZE).toMutableList()
@@ -94,18 +90,16 @@ class VideoListGenerator(
         }
     }
 
-    private fun nextPage(): ListExtractor.InfoItemsPage<out InfoItem> {
-        return currentPage.let {
-            (
-                if (it === sentinelInitialPage) {
-                    extractor?.initialPage
-                } else if (it.hasNextPage()) {
-                    extractor?.getPage(it.nextPage)
-                } else {
-                    null
-                }
+    private fun nextPage(): ListExtractor.InfoItemsPage<out InfoItem> = currentPage.let {
+        (
+            if (it === sentinelInitialPage) {
+                extractor?.initialPage
+            } else if (it.hasNextPage()) {
+                extractor?.getPage(it.nextPage)
+            } else {
+                null
+            }
             ) ?: ListExtractor.InfoItemsPage.emptyPage()
-        }
     }
 }
 
@@ -185,8 +179,8 @@ class ControlPane(
                     TabIdentifier.SUBSCRIPTION,
                     VideoListGenerator(
                         seenItems =
-                            listOf(VideoListGenerator.VideoListItem.Node(page)) +
-                                subscriptionCache.seenItems().map(VideoListGenerator.VideoListItem::InfoItem),
+                        listOf(VideoListGenerator.VideoListItem.Node(page)) +
+                            subscriptionCache.seenItems().map(VideoListGenerator.VideoListItem::InfoItem),
                     ),
                 )
             }
@@ -272,39 +266,36 @@ class ControlPane(
         tabList.setDisable(false)
     }
 
-    private fun createStandardCard(item: InfoItem): Node? {
-        return when (item) {
-            is ChannelInfoItem ->
-                ChannelCard(item, scope, subscription, subscriptionCache) {
-                    withClearedVideoList {
-                        Pair(
-                            TabIdentifier(TabIdentifier.TabType.CHANNEL, item.name),
-                            VideoListGenerator(
-                                seenItems = listOf(VideoListGenerator.VideoListItem.InfoItem(item)),
-                                extractor = streamingService.getFeedExtractor(item.url),
-                            ),
-                        )
-                    }
+    private fun createStandardCard(item: InfoItem): Node? = when (item) {
+        is ChannelInfoItem ->
+            ChannelCard(item, scope, subscription, subscriptionCache) {
+                withClearedVideoList {
+                    Pair(
+                        TabIdentifier(TabIdentifier.TabType.CHANNEL, item.name),
+                        VideoListGenerator(
+                            seenItems = listOf(VideoListGenerator.VideoListItem.InfoItem(item)),
+                            extractor = streamingService.getFeedExtractor(item.url),
+                        ),
+                    )
                 }
-            is StreamInfoItem ->
-                VideoCard(item, scope) {
-                    windowBoundsHandler.resizeToBase()
-                    withClearedVideoList {
-                        // TODO: ExtractionException
-                        val relatedInfo =
-                            controller.gotoVideoUrl(item.url)
-                                .relatedItems?.items?.map(VideoListGenerator.VideoListItem::InfoItem) ?: listOf()
-                        Pair(TabIdentifier.RELATED, VideoListGenerator(seenItems = relatedInfo))
-                    }
+            }
+        is StreamInfoItem ->
+            VideoCard(item, scope) {
+                windowBoundsHandler.resizeToBase()
+                withClearedVideoList {
+                    // TODO: ExtractionException
+                    val relatedInfo =
+                        controller.gotoVideoUrl(item.url)
+                            .relatedItems?.items?.map(VideoListGenerator.VideoListItem::InfoItem) ?: listOf()
+                    Pair(TabIdentifier.RELATED, VideoListGenerator(seenItems = relatedInfo))
                 }
-            else -> null
-        }
+            }
+        else -> null
     }
 
-    private fun <T : Event> handler(block: suspend (event: T) -> Unit): EventHandler<T> =
-        object : EventHandler<T> {
-            override fun handle(event: T) {
-                scope.launch { block(event) }
-            }
+    private fun <T : Event> handler(block: suspend (event: T) -> Unit): EventHandler<T> = object : EventHandler<T> {
+        override fun handle(event: T) {
+            scope.launch { block(event) }
         }
+    }
 }

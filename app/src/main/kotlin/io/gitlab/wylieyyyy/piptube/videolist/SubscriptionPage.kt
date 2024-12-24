@@ -32,10 +32,10 @@ class SubscriptionPage(
                         TabIdentifier.SUBSCRIPTION,
                         VideoListGenerator(
                             seenItems =
-                                listOf(VideoListGenerator.VideoListItem.Node(it)) +
-                                    subscriptionCache.seenItems().map(
-                                        VideoListGenerator.VideoListItem::InfoItem,
-                                    ),
+                            listOf(VideoListGenerator.VideoListItem.Node(it)) +
+                                subscriptionCache.seenItems().map(
+                                    VideoListGenerator.VideoListItem::InfoItem,
+                                ),
                         ),
                     )
                 }
