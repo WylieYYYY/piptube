@@ -9,6 +9,7 @@ import org.schabi.newpipe.extractor.exceptions.ReCaptchaException
 import java.util.concurrent.TimeUnit
 import okhttp3.Request as OkRequest
 
+/** Port of the NewPipe downloader implementation in Kotlin. */
 object DownloaderImpl : Downloader() {
     private const val READ_TIMEOUT_SECONDS = 30L
     private const val USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; rv:91.0) Gecko/20100101 Firefox/91.0"

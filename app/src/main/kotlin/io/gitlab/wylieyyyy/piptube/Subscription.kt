@@ -41,6 +41,12 @@ import kotlin.time.DurationUnit
 import kotlin.time.toDuration
 import java.io.Serializable as JavaSerializable
 
+/**
+ * [KSerializer] implementation for arbitrary Java serializable class.
+ *
+ * @param[clazz] Target Java class which the deserialized data cast to.
+ * @constructor Creates a serializer for the given class, generic parameter should be the same class.
+ */
 open class JavaSerializableSerializer<T : JavaSerializable>(private val clazz: Class<T>) : KSerializer<T> {
     override val descriptor: SerialDescriptor = ByteArraySerializer().descriptor
 
@@ -70,6 +76,7 @@ open class JavaSerializableSerializer<T : JavaSerializable>(private val clazz: C
     }
 }
 
+/** [KSerializer] for NewPipe [StreamInfoItem]. */
 object StreamInfoItemSerializer : JavaSerializableSerializer<StreamInfoItem>(StreamInfoItem::class.java)
 
 private val reverseTimeComparator =
@@ -80,6 +87,10 @@ private val reverseTimeComparator =
 private val uniqueStreamComparator =
     Comparator.comparing(StreamInfoItem::getServiceId).thenComparing(StreamInfoItem::getUrl)
 
+/**
+ * [KSerializer] for a tree set of NewPipe [StreamInfoItem].
+ * A wrapper of [SetSerializer] since it does not support tree set directly.
+ */
 object StreamInfoItemTreeSetSerializer : KSerializer<TreeSet<StreamInfoItem>> {
     override val descriptor: SerialDescriptor = SetSerializer(StreamInfoItemSerializer).descriptor
 
@@ -97,18 +108,51 @@ object StreamInfoItemTreeSetSerializer : KSerializer<TreeSet<StreamInfoItem>> {
     }
 }
 
+/**
+ * Lightweight alternative to [ChannelInfoItem] which only stores key data.
+ *
+ * @param[serviceId] Service ID which is static and assigned by NewPipe,
+ *  deserializes to snake case to match NewPipe exported JSON casing.
+ * @property[serviceId] Service ID which is static and assigned by NewPipe,
+ *  deserializes to snake case to match NewPipe exported JSON casing.
+ * @param[url] URL to the channel page.
+ * @property[url] URL to the channel page.
+ * @constructor Creates an identifier from key data.
+ */
 @Serializable
 public data class ChannelIdentifier(
     @SerialName("service_id") public val serviceId: Int,
     public val url: String,
 ) {
+    /**
+     * Creates an identifier from an existing [ChannelInfoItem].
+     *
+     * @param[channel] [ChannelInfoItem] to extract key data from.
+     */
     public constructor(channel: ChannelInfoItem) : this(channel.serviceId, channel.url)
 }
 
+/**
+ * Container for subscription related data, which is currently a set of channel identifiers.
+ * Cbor serializer requires an experimental opt in.
+ *
+ * All operations that change the subscription will be
+ * saved to the persistent storage in the same call.
+ */
 @OptIn(ExperimentalSerializationApi::class)
 @Serializable
 data class Subscription private constructor(private val channels: MutableSet<ChannelIdentifier>) {
+    /**
+     * Factory method for creating the subscription container.
+     * There are no other constructors as this must accompany persistent storage set up.
+     */
     companion object {
+        /**
+         * Fetches subscription container from persistent storage.
+         * Creates and stores an empty container if there isn't one that was persisted.
+         *
+         * @return Subscription container, either new or from persistent storage.
+         */
         public suspend fun fromStorageOrNew(): Subscription = withContext(Dispatchers.IO) {
             // TODO: fail mkdirs
             PATH.parent.toFile().mkdirs()
@@ -139,6 +183,12 @@ data class Subscription private constructor(private val channels: MutableSet<Cha
 
     @Transient private val hasPending = AtomicBoolean(false)
 
+    /**
+     * Imports subscriptions to the current instance.
+     *
+     * @param[service] Import service to parse the stream to obtain a list of channel identifiers.
+     * @param[stream] Generic input stream to relay to the import service for parsing.
+     */
     public suspend fun import(
         service: ImportService,
         stream: InputStream,
@@ -148,10 +198,28 @@ data class Subscription private constructor(private val channels: MutableSet<Cha
         requestSave()
     }
 
+    /**
+     * Gets the channels that are stored in this subscription container.
+     * To check for membership, [getIsSubscribed] should be used instead to prevent excessive locking.
+     *
+     * @return List of channel identifiers of subscribed channels.
+     */
     public suspend fun channels(): List<ChannelIdentifier> = setMutex.withLock { channels.toList() }
 
+    /**
+     * Checks whether a channel is subscribed to.
+     *
+     * @param[channel] Identifier for the channel to be queried about.
+     * @return True if a channel is subscribed to, false otherwise.
+     */
     public fun getIsSubscribed(channel: ChannelIdentifier) = channel in channels
 
+    /**
+     * Toggles the subscription status of a channel.
+     *
+     * @param[channel] Identifier for the channel to be toggled.
+     * @return True if the channel is now subscribed to after toggling, false otherwise.
+     */
     public suspend fun toggle(channel: ChannelIdentifier): Boolean {
         var isAddition: Boolean
         setMutex.withLock {
@@ -180,6 +248,14 @@ private fun <T> serializer(): KSerializer<T> = throw NotImplementedError(
     "Serializer implementation should be provided by the plugin",
 )
 
+/**
+ * Container for caching videos from subscribed channels.
+ * Cbor serializer requires an experimental opt in.
+ *
+ * @property[lastUpdated] When the cache was updated,
+ *  represented by the number of seconds since Unix epoch.
+ *  This is sufficient as the time is only used for cooldown and does not need to be precise.
+ */
 @OptIn(ExperimentalSerializationApi::class)
 @Serializable
 data class SubscriptionCache private constructor(
@@ -190,7 +266,17 @@ data class SubscriptionCache private constructor(
         >,
     public var lastUpdated: Long,
 ) {
+    /**
+     * Factory method for creating the cache container.
+     * There are no other constructors as this must accompany persistent storage set up.
+     */
     companion object {
+        /**
+         * Fetches cache container from persistent storage.
+         * Creates and stores an empty container if there isn't one that was persisted.
+         *
+         * @return Cache container, either new or from persistent storage.
+         */
         public suspend fun fromCacheOrNew(): SubscriptionCache {
             return withContext(Dispatchers.IO) {
                 var newSubscription: SubscriptionCache? = null
@@ -228,12 +314,31 @@ data class SubscriptionCache private constructor(
 
     @Transient private val setMutex = Mutex()
 
-    public constructor() : this(TreeSet(reverseTimeComparator.then(uniqueStreamComparator)), 0)
+    private constructor() : this(TreeSet(reverseTimeComparator.then(uniqueStreamComparator)), 0)
 
+    /**
+     * Gets a list of [StreamInfoItem] that are cached.
+     * There is no check for whether the streams are from channels that are currently subscribed to.
+     *
+     * @return List of [StreamInfoItem] that are cached.
+     */
     public suspend fun seenItems(): List<StreamInfoItem> = setMutex.withLock {
         seenItems.toList()
     }
 
+    /**
+     * Fetches new items from the given channels and write to the cache,
+     * if cooldown period has not elapsed, do nothing.
+     * Do not cancel execution immediately after all identifiers have been received from the flow,
+     * as write will occur after all channel identifiers are yielded from the flow.
+     *
+     * @param[channels] Channels to fetch new items from.
+     * @param[ignoreCooldown] True if the cooldown should be ignored, false otherwise.
+     *  The default value is false.
+     * @return Flow of channel identifiers that have just been fetched.
+     *  This will be of the same length of the given iterable once the fetches are finished.
+     *  Or of zero length if the cooldown period has not elapsed.
+     */
     public suspend fun fetchUnseenItems(
         channels: Iterable<ChannelIdentifier>,
         ignoreCooldown: Boolean = false,

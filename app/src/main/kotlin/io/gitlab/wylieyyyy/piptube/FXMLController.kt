@@ -11,15 +11,28 @@ import java.util.Stack
 import javax.swing.JFrame
 import javax.swing.JWindow
 
+/**
+ * JavaFx controller, all passed windows should contain a [JFXPanel].
+ * This controller contains state information that is global.
+ *
+ * @param[controlFrame] Top control pane window.
+ * @param[videoWindow] Bottom video player window.
+ * @constructor Creates the controller for this application.
+ */
 class FXMLController(private val controlFrame: JFrame, private val videoWindow: JWindow) {
+    /** Predefined dimensional constants. */
     companion object {
+        /** Common width for both windows. */
         public const val BASE_WIDTH = 640
 
+        /** Common height for both windows. */
         public const val BASE_HEIGHT = 360
     }
 
+    /** Control pane, exposed for interactions that do not involve global states. */
     public val controlPane: ControlPane
 
+    /** Video player, exposed for interactions that do not involve global states. */
     public val player: VideoPlayer
 
     private val scope = MainScope()
@@ -49,10 +62,29 @@ class FXMLController(private val controlFrame: JFrame, private val videoWindow: 
         videoWindow.setVisible(true)
     }
 
+    /**
+     * Alias for scrolling video list within the control pane.
+     * This exists as scrolling the video list is implementation detail of the control pane.
+     *
+     * @param[event] JavaFx scroll event.
+     * @return True if the control pane has been scrolled,
+     *  false if the control pane has reached its scroll limit.
+     */
     public fun scrollControlPane(event: ScrollEvent) = controlPane.scrollVideoList(event)
 
+    /**
+     * Go to the video denoted by the given Url.
+     * This interacts with global state as it interacts with the stack of videos.
+     *
+     * @param[url] Url which specifies the video.
+     * @return A [StreamExtractor] for the video, this is for extracting related items.
+     */
     public suspend fun gotoVideoUrl(url: String): StreamExtractor = videoStack.push(player.updateVideo(url))
 
+    /**
+     * Navigates backward one video.
+     * This interacts with global state as it interacts with the stack of videos.
+     */
     public suspend fun onBack() {
         val lastVideo = videoStack.pop()
         if (videoStack.empty()) {
