@@ -30,19 +30,26 @@ import java.awt.Point
 import kotlin.time.DurationUnit
 import kotlin.time.toDuration
 
+/**
+ * Main video player node containing video-specific control.
+ *
+ * @constructor Creates the player with the given global objects.
+ */
 class VideoPlayer(
     private val streamingService: StreamingService,
     private val controller: FXMLController,
     private val windowBoundsHandler: WindowBoundsHandler,
     private val scope: CoroutineScope,
 ) : StackPane() {
+    /** Predefined dimensional constants. */
     companion object {
-        public const val SEEKBAR_OFFSET = 20
-
+        /** Uses common window width as seekbar's width. */
         public const val SEEKBAR_WIDTH = FXMLController.BASE_WIDTH
 
+        /** Height of a collapsed seekbar. */
         public const val SEEKBAR_HEIGHT = 3
 
+        /** Height of an expanded seekbar. */
         public const val SEEKBAR_EXPANDED_HEIGHT = SEEKBAR_HEIGHT * 3
     }
 
@@ -145,6 +152,12 @@ class VideoPlayer(
         progressLabel.managedProperty().bind(progressLabel.visibleProperty())
     }
 
+    /**
+     * Updates player to show the video denoted by the given Url.
+     *
+     * @param[url] Url which specifies the video.
+     * @return A [StreamExtractor] for the video.
+     */
     public suspend fun updateVideo(url: String): StreamExtractor {
         embeddedMediaPlayer.controls().stop()
         progress.setVisible(true)
@@ -163,6 +176,11 @@ class VideoPlayer(
         return extractor
     }
 
+    /**
+     * Plays a video from an existing [StreamExtractor].
+     *
+     * @param[extractor] Extractor which specifies the video.
+     */
     public fun updateVideo(extractor: StreamExtractor) {
         embeddedMediaPlayer.controls().stop()
         progress.setVisible(true)
@@ -213,10 +231,13 @@ class VideoPlayer(
     }
 }
 
+/** Operator for multiplying a duration by a scalar. */
 operator fun Duration.times(other: Double): Duration = multiply(other)
 
+/** Operator for dividing a duration by a scalar. */
 operator fun Duration.div(other: Double): Duration = divide(other)
 
+/** Operator for flipping a horizontal direction. */
 operator fun HorizontalDirection.not() = if (this == HorizontalDirection.RIGHT) {
     HorizontalDirection.LEFT
 } else {

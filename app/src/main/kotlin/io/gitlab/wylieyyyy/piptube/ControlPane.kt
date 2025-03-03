@@ -31,31 +31,69 @@ import org.schabi.newpipe.extractor.search.SearchExtractor.NothingFoundException
 import org.schabi.newpipe.extractor.stream.StreamInfoItem
 import kotlin.getOrThrow
 
+/**
+ * Generator for video list items.
+ * This allows prepended static items and buffers dynamic items from an extractor.
+ * Items can be randomly accessed by item index rather than dealing with pages.
+ *
+ * @param[seenItems] List of static video list items, the default value is an empty list.
+ * @param[extractor] Extractor to fetch dynamic items from, null if no dynamic items are required.
+ *  The default value is null.
+ * @constructor Creates a generator with the given static and dynamic items.
+ */
 class VideoListGenerator(
     seenItems: List<VideoListItem> = listOf(),
     private val extractor: ListExtractor<out InfoItem>? = null,
 ) {
-    companion object {
+    private companion object {
         private const val PAGE_SIZE = 10
     }
 
+    /** Video list items that are either JavaFx nodes or NewPipe info items. */
     sealed class VideoListItem {
+        /** Variant that wraps a NewPipe [org.schabi.newpipe.extractor.InfoItem]. */
         data class InfoItem<T : org.schabi.newpipe.extractor.InfoItem>(public val item: T) : VideoListItem()
 
+        /** Variant that wraps a JavaFx [javafx.scene.Node]. */
         data class Node(public val node: javafx.scene.Node) : VideoListItem()
     }
 
+    /**
+     * List of items that are available now.
+     * Initially equivalent to the list of static items, with more dynamic items added after fetching.
+     */
     public val seenItems = seenItems.toMutableList<VideoListItem>()
 
     private val sentinelInitialPage = ListExtractor.InfoItemsPage(listOf(), null, listOf())
     private var currentPage: ListExtractor.InfoItemsPage<out InfoItem> = sentinelInitialPage
 
+    /**
+     * Checks whether this generator is proper.
+     * Proper here means that either this generator contains only static items,
+     * or some dynamic items have been fetched.
+     *
+     * @return True if this generator is proper by this definition, false otherwise.
+     */
     public fun isProper(): Boolean = extractor == null || currentPage !== sentinelInitialPage
 
+    /**
+     * Checks whether this generator has fetched all dynamic items.
+     *
+     * @return True if the generator contains only static items or all dynamic items have been
+     *  fetched, false otherwise.
+     */
     public fun isExhausted(): Boolean = extractor == null ||
         (currentPage !== sentinelInitialPage && !currentPage.hasNextPage()) ||
         currentPage === ListExtractor.InfoItemsPage.emptyPage<InfoItem>()
 
+    /**
+     * Random accessor for items in this generator, fetch if necessary.
+     * Page size is determined internally.
+     *
+     * @param[index] Index of the starting item.
+     * @return A pair of a list of [VideoListItem] starting at the given item index,
+     *  and a boolean of whether there are more items after this list that can be accessed.
+     */
     public suspend fun itemsFrom(index: Int): Pair<List<VideoListItem>, Boolean> {
         val items = seenItems.asSequence().drop(index).take(PAGE_SIZE).toMutableList()
         while (items.size < PAGE_SIZE && !isExhausted()) {
@@ -65,6 +103,12 @@ class VideoListGenerator(
         return Pair(items, hasNext)
     }
 
+    /**
+     * Fetches the next batch of unseen items.
+     *
+     * @return List of [VideoListItem],
+     *  the variant of the items is always [VideoListItem.InfoItem].
+     */
     public suspend fun unseenItems(): List<VideoListItem> {
         if (extractor == null) return listOf()
 
@@ -103,6 +147,11 @@ class VideoListGenerator(
     }
 }
 
+/**
+ * Node containing auxiliary menu and interface outside of the player.
+ *
+ * @constructor Creates the control pane with the given global objects.
+ */
 class ControlPane(
     private val streamingService: StreamingService,
     private val controller: FXMLController,
@@ -187,6 +236,13 @@ class ControlPane(
         }
     }
 
+    /**
+     * Handler for a JavaFx [ScrollEvent] to scroll the video list.
+     *
+     * @param[event] JavaFx scroll event.
+     * @return True if the control pane has been scrolled,
+     *  false if the video list has reached its scroll limit.
+     */
     public fun scrollVideoList(event: ScrollEvent): Boolean {
         scrollPane.vmax = videoList.height
         val oldVvalue = scrollPane.vvalue
@@ -194,6 +250,17 @@ class ControlPane(
         return oldVvalue != scrollPane.vvalue
     }
 
+    /**
+     * Clears the video list, switch to a tab if required, and set a new [VideoListGenerator].
+     * Scroll will be reset even if the given generator is the same as the existing one.
+     *
+     * No other public methods are available to manipulate the video list,
+     * this is to ensure that the video list stays in a consistent state with valid items.
+     *
+     * @param[block] Block to be executed to get the identifier and generator for the tab.
+     *  If the identifier is identical with one that identifies an existing tab,
+     *  that tab's generator will be replaced with the given one.
+     */
     public suspend fun withClearedVideoList(block: suspend () -> Pair<TabIdentifier, VideoListGenerator>) {
         scrollPane.vvalueProperty().removeListener(infiniteScrollHandler)
         clearVideoList()

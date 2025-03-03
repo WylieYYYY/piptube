@@ -35,6 +35,7 @@ data class TabIdentifier private constructor(private val name: String, private v
     public enum class TabType private constructor(public val representation: String) {
         /** Type for a channel page tab displaying information and video listing of a channel. */
         CHANNEL("@ "),
+
         /** Type for a search page tab displaying search results. */
         SEARCH("? "),
     }

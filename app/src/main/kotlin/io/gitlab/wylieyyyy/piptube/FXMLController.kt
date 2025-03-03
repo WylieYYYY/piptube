@@ -73,7 +73,7 @@ class FXMLController(private val controlFrame: JFrame, private val videoWindow: 
     public fun scrollControlPane(event: ScrollEvent) = controlPane.scrollVideoList(event)
 
     /**
-     * Go to the video denoted by the given Url.
+     * Goes to the video denoted by the given Url.
      * This interacts with global state as it interacts with the stack of videos.
      *
      * @param[url] Url which specifies the video.
