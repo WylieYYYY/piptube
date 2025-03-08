@@ -90,7 +90,7 @@ class VideoPlayer(
                     mediaPlayer: MediaPlayer,
                     newCache: Float,
                 ) {
-                    progress.setVisible(newCache != 100.toFloat())
+                    scope.launch { progress.setVisible(newCache != 100.toFloat()) }
                 }
 
                 override fun timeChanged(
@@ -219,7 +219,7 @@ class VideoPlayer(
             }
     }
 
-    private suspend fun handleSeekbarClicked(event: MouseEvent) {
+    private fun handleSeekbarClicked(event: MouseEvent) {
         embeddedMediaPlayer.controls().setPosition((event.x / SEEKBAR_WIDTH).toFloat())
         updateVideoProgress()
     }
