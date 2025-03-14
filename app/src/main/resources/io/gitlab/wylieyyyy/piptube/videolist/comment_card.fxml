@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.VBox?>
+<?import javafx.scene.shape.Circle?>
+
+<?import io.gitlab.wylieyyyy.piptube.videolist.CommentCard?>
+
+
+<fx:root xmlns:fx="http://javafx.com/fxml/1" type="javafx.scene.layout.HBox">
+   <spacing><CommentCard fx:constant="SPACING" /></spacing>
+   <padding>
+      <Insets>
+         <topRightBottomLeft><CommentCard fx:constant="SPACING" /></topRightBottomLeft>
+      </Insets>
+   </padding>
+   <children>
+      <Circle fx:id="avatarCircle">
+         <radius><CommentCard fx:constant="AVATAR_RADIUS" /></radius>
+      </Circle>
+      <VBox>
+         <Label fx:id="nameLabel" text="Unknown Commenter" />
+         <Label fx:id="textLabel" text="Unknown Comment" />
+      </VBox>
+   </children>
+</fx:root>

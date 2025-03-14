@@ -134,6 +134,7 @@ class VideoPlayer(
             handler {
                 if (it.deltaY < 0 && !controller.scrollControlPane(it)) {
                     windowBoundsHandler.handleScroll(it)
+                    windowBoundsHandler.rejoinWindows()
                 } else if (it.deltaY > 0 && !windowBoundsHandler.handleScroll(it)) {
                     controller.scrollControlPane(it)
                 }

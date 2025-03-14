@@ -6,6 +6,7 @@ import javafx.scene.input.ScrollEvent
 import javafx.stage.Screen
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import java.awt.Point
 import javax.swing.JFrame
 import javax.swing.JWindow
@@ -120,7 +121,7 @@ class WindowBoundsHandler(
     }
 
     /**
-     * Resize the control pane window to only display the video player window.
+     * Resizes the control pane window to only display the video player window.
      *
      * @return True if the control pane window has changed height,
      *  false if it was already minimized.
@@ -142,7 +143,17 @@ class WindowBoundsHandler(
     }
 
     /**
-     * Focus or unfocus the control pane window.
+     * Rejoins the control pane window on top of the video player window.
+     * This is used for rejoining the windows after handling scroll relatively.
+     */
+    public suspend fun rejoinWindows() {
+        scrollMutex.withLock {
+            controlFrame.setLocation(videoWindow.x, videoWindow.y - controlFrame.height)
+        }
+    }
+
+    /**
+     * Focuses or unfocuses the control pane window.
      *
      * @param[shouldFocus] True to focus the control pane window, false to unfocus.
      */

@@ -21,10 +21,10 @@
    <prefHeight><FXMLController fx:constant="BASE_HEIGHT" /></prefHeight>
    <children>
       <HBox>
-         <SearchField fx:id="searchField">
+         <SearchField fx:id="searchField" focusTraversable="false">
             <HBox.hgrow>ALWAYS</HBox.hgrow>
          </SearchField>
-         <Button fx:id="menuButton" text="..." />
+         <Button fx:id="menuButton" text="..." focusTraversable="false" />
       </HBox>
       <HBox>
          <VBox.vgrow>ALWAYS</VBox.vgrow>

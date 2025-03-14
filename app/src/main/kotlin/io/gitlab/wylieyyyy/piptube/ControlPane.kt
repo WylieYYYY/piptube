@@ -1,6 +1,8 @@
 package io.gitlab.wylieyyyy.piptube
 
 import io.gitlab.wylieyyyy.piptube.videolist.ChannelCard
+import io.gitlab.wylieyyyy.piptube.videolist.CommentCard
+import io.gitlab.wylieyyyy.piptube.videolist.InfoCard
 import io.gitlab.wylieyyyy.piptube.videolist.SettingsPage
 import io.gitlab.wylieyyyy.piptube.videolist.SubscriptionPage
 import io.gitlab.wylieyyyy.piptube.videolist.VideoCard
@@ -27,6 +29,7 @@ import org.schabi.newpipe.extractor.InfoItem
 import org.schabi.newpipe.extractor.ListExtractor
 import org.schabi.newpipe.extractor.StreamingService
 import org.schabi.newpipe.extractor.channel.ChannelInfoItem
+import org.schabi.newpipe.extractor.comments.CommentsInfoItem
 import org.schabi.newpipe.extractor.search.SearchExtractor.NothingFoundException
 import org.schabi.newpipe.extractor.stream.StreamInfoItem
 import kotlin.getOrThrow
@@ -202,6 +205,7 @@ class ControlPane(
 
         tabList.selectionModel.selectedItemProperty().addListener(
             ChangeListener { _, _, newValue ->
+                windowBoundsHandler.focusControlPane(false)
                 clearVideoList()
                 scope.launch {
                     if (newValue == null) {
@@ -346,6 +350,8 @@ class ControlPane(
                     )
                 }
             }
+        is CommentsInfoItem ->
+            CommentCard(item)
         is StreamInfoItem ->
             VideoCard(item, scope) {
                 windowBoundsHandler.resizeToBase()
@@ -354,7 +360,30 @@ class ControlPane(
                     val relatedInfo =
                         controller.gotoVideoUrl(item.url)
                             .relatedItems?.items?.map(VideoListGenerator.VideoListItem::InfoItem) ?: listOf()
-                    Pair(TabIdentifier.RELATED, VideoListGenerator(seenItems = relatedInfo))
+
+                    val relatedVideosPageFactory = { card: InfoCard ->
+                        val seenItems = listOf(VideoListGenerator.VideoListItem.Node(card)) + relatedInfo
+                        Pair(TabIdentifier.RELATED, VideoListGenerator(seenItems))
+                    }
+
+                    val switchToCommentsCard = InfoCard("Switch to comments", scope) { switchToCommentsCard: InfoCard ->
+                        withClearedVideoList {
+                            val switchToVideosCard = InfoCard("Switch to videos", scope) {
+                                withClearedVideoList { relatedVideosPageFactory(switchToCommentsCard) }
+                            }
+
+                            // TODO: ParsingException
+                            val commentLinkHandler = streamingService.commentsLHFactory.fromUrl(item.url)
+                            val generator = VideoListGenerator(
+                                seenItems = listOf(VideoListGenerator.VideoListItem.Node(switchToVideosCard)),
+                                // TODO: ExtractionException
+                                extractor = streamingService.getCommentsExtractor(commentLinkHandler),
+                            )
+                            Pair(TabIdentifier.RELATED, generator)
+                        }
+                    }
+
+                    relatedVideosPageFactory(switchToCommentsCard)
                 }
             }
         else -> null
