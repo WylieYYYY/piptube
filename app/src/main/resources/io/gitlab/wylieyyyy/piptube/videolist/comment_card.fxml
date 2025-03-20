@@ -5,6 +5,7 @@
 <?import javafx.scene.layout.HBox?>
 <?import javafx.scene.layout.VBox?>
 <?import javafx.scene.shape.Circle?>
+<?import javafx.scene.text.TextFlow?>
 
 <?import io.gitlab.wylieyyyy.piptube.videolist.CommentCard?>
 
@@ -22,7 +23,7 @@
       </Circle>
       <VBox>
          <Label fx:id="nameLabel" text="Unknown Commenter" />
-         <Label fx:id="textLabel" text="Unknown Comment" />
+         <TextFlow fx:id="textFlow" />
       </VBox>
    </children>
 </fx:root>

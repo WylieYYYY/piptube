@@ -24,6 +24,7 @@ dependencies {
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-javafx:1.9.0")
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-cbor:1.7.3")
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.7.3")
+    implementation("org.jsoup:jsoup:1.19.1")
     implementation("uk.co.caprica:vlcj-javafx:1.2.0")
 
     testImplementation("org.jetbrains.kotlin:kotlin-test-junit5")
