@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
+<?import javafx.geometry.Insets?>
 <?import javafx.geometry.Pos?>
 <?import javafx.scene.control.Button?>
 <?import javafx.scene.control.ProgressIndicator?>
@@ -47,6 +48,13 @@
                   </ScrollPane>
                   <Button fx:id="floatingButton" visible="false" focusTraversable="false">
                      <StackPane.alignment><Pos fx:constant="BOTTOM_RIGHT" /></StackPane.alignment>
+                     <StackPane.margin>
+                        <Insets>
+                           <topRightBottomLeft>
+                              <ControlPane fx:constant="FLOATING_BUTTON_PADDING" />
+                           </topRightBottomLeft>
+                        </Insets>
+                     </StackPane.margin>
                      <shape>
                         <Circle>
                            <radius><ControlPane fx:constant="FLOATING_BUTTON_RADIUS" /></radius>

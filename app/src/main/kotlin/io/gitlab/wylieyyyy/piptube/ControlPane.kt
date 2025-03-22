@@ -43,6 +43,9 @@ class ControlPane(
     private val scope: CoroutineScope,
 ) : VBox() {
     companion object {
+        /** Padding of the floating button from the bottom right. */
+        public const val FLOATING_BUTTON_PADDING = 10
+
         /** Radius of the floating button for switching generators. */
         public const val FLOATING_BUTTON_RADIUS = 30
     }
@@ -266,7 +269,7 @@ class ControlPane(
                 }
             }
         is CommentsInfoItem ->
-            CommentCard(item)
+            CommentCard(item, scope)
         is StreamInfoItem ->
             VideoCard(item, scope) {
                 windowBoundsHandler.resizeToBase()

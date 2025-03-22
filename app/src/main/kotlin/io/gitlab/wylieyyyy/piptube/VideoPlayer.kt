@@ -86,17 +86,15 @@ class VideoPlayer(
 
         embeddedMediaPlayer.events().addMediaPlayerEventListener(
             object : MediaPlayerEventAdapter() {
-                override fun buffering(
-                    mediaPlayer: MediaPlayer,
-                    newCache: Float,
-                ) {
+                override fun buffering(mediaPlayer: MediaPlayer, newCache: Float) {
                     scope.launch { progress.setVisible(newCache != 100.toFloat()) }
                 }
 
-                override fun timeChanged(
-                    mediaPlayer: MediaPlayer,
-                    newTime: Long,
-                ) {
+                override fun finished(mediaPlayer: MediaPlayer) {
+                    scope.launch { windowBoundsHandler.resizeToExpanded() }
+                }
+
+                override fun timeChanged(mediaPlayer: MediaPlayer, newTime: Long) {
                     scope.launch { updateVideoProgress() }
                 }
             },

@@ -12,6 +12,9 @@ import javafx.scene.paint.ImagePattern
 import javafx.scene.shape.Circle
 import javafx.scene.text.Text
 import javafx.scene.text.TextFlow
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
 import org.jsoup.nodes.TextNode
@@ -20,7 +23,7 @@ import org.schabi.newpipe.extractor.comments.CommentsInfoItem
 import org.schabi.newpipe.extractor.stream.Description
 import org.jsoup.nodes.Node as JsoupNode
 
-class CommentCard(private val commentInfo: CommentsInfoItem) : HBox() {
+class CommentCard(private val commentInfo: CommentsInfoItem, private val scope: CoroutineScope) : HBox() {
     companion object {
         public const val SPACING = 10
 
@@ -43,9 +46,11 @@ class CommentCard(private val commentInfo: CommentsInfoItem) : HBox() {
     @Suppress("UnusedPrivateMember")
     @FXML
     private fun initialize() {
-        commentInfo.uploaderAvatars.firstOrNull()?.also {
-            // TODO: IllegalArgumentException
-            avatarCircle.fill = ImagePattern(Image(it.url))
+        commentInfo.uploaderAvatars.firstOrNull()?.let {
+            scope.launch(Dispatchers.IO) {
+                // TODO: IllegalArgumentException
+                avatarCircle.fill = ImagePattern(Image(it.url))
+            }
         }
         nameLabel.text = commentInfo.uploaderName
         parseComment(textFlow, commentInfo.commentText)

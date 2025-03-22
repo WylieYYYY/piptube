@@ -143,6 +143,28 @@ class WindowBoundsHandler(
     }
 
     /**
+     * Resizes the control pane window to a fully expanded state.
+     *
+     * @return True if the control pane window has changed height,
+     *  false if it was already maximized.
+     */
+    public fun resizeToExpanded(): Boolean {
+        val oldControlBounds = controlFrame.bounds
+        val controlVerticalInset = controlFrame.insets.top + controlFrame.insets.bottom
+
+        val controlDeltaY = baseHeight - (oldControlBounds.height - controlVerticalInset)
+
+        controlFrame.setBounds(
+            oldControlBounds.x,
+            oldControlBounds.y - controlDeltaY,
+            oldControlBounds.width,
+            baseHeight + controlVerticalInset,
+        )
+
+        return controlDeltaY != 0
+    }
+
+    /**
      * Rejoins the control pane window on top of the video player window.
      * This is used for rejoining the windows after handling scroll relatively.
      */
