@@ -1,5 +1,6 @@
 package io.gitlab.wylieyyyy.piptube
 
+import io.gitlab.wylieyyyy.piptube.videolist.VideoListGenerator
 import javafx.beans.value.ChangeListener
 import javafx.event.Event
 import javafx.event.EventHandler

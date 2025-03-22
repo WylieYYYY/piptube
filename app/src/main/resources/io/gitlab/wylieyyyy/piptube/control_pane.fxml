@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
+<?import javafx.geometry.Pos?>
 <?import javafx.scene.control.Button?>
 <?import javafx.scene.control.ProgressIndicator?>
 <?import javafx.scene.control.ScrollPane?>
@@ -7,10 +8,12 @@
 <?import javafx.scene.layout.HBox?>
 <?import javafx.scene.layout.StackPane?>
 <?import javafx.scene.layout.VBox?>
+<?import javafx.scene.shape.Circle?>
 <?import io.gitlab.wylieyyyy.piptube.SearchField?>
 <?import io.gitlab.wylieyyyy.piptube.videolist.InfoCard?>
 
 <?import javafx.scene.layout.Region?>
+<?import io.gitlab.wylieyyyy.piptube.ControlPane?>
 <?import io.gitlab.wylieyyyy.piptube.FXMLController?>
 
 
@@ -42,6 +45,14 @@
                         </VBox>
                      </content>
                   </ScrollPane>
+                  <Button fx:id="floatingButton" focusTraversable="false">
+                     <StackPane.alignment><Pos fx:constant="BOTTOM_RIGHT" /></StackPane.alignment>
+                     <shape>
+                        <Circle>
+                           <radius><ControlPane fx:constant="FLOATING_BUTTON_RADIUS" /></radius>
+                        </Circle>
+                     </shape>
+                  </Button>
                   <ProgressIndicator fx:id="progress" visible="false" mouseTransparent="true">
                      <progress><ProgressIndicator fx:constant="INDETERMINATE_PROGRESS" /></progress>
                   </ProgressIndicator>

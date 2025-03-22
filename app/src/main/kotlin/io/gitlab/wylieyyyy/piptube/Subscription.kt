@@ -2,6 +2,7 @@ package io.gitlab.wylieyyyy.piptube
 
 import com.mayakapps.kache.FileKache
 import com.mayakapps.kache.KacheStrategy
+import io.gitlab.wylieyyyy.piptube.videolist.VideoListGenerator
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.MainScope
 import kotlinx.coroutines.async
@@ -50,10 +51,7 @@ import java.io.Serializable as JavaSerializable
 open class JavaSerializableSerializer<T : JavaSerializable>(private val clazz: Class<T>) : KSerializer<T> {
     override val descriptor: SerialDescriptor = ByteArraySerializer().descriptor
 
-    override fun serialize(
-        encoder: Encoder,
-        value: T,
-    ) {
+    override fun serialize(encoder: Encoder, value: T) {
         val stream = ByteArrayOutputStream()
         // TODO: IOException
         ObjectOutputStream(stream).use {
@@ -94,10 +92,7 @@ private val uniqueStreamComparator =
 object StreamInfoItemTreeSetSerializer : KSerializer<TreeSet<StreamInfoItem>> {
     override val descriptor: SerialDescriptor = SetSerializer(StreamInfoItemSerializer).descriptor
 
-    override fun serialize(
-        encoder: Encoder,
-        value: TreeSet<StreamInfoItem>,
-    ) {
+    override fun serialize(encoder: Encoder, value: TreeSet<StreamInfoItem>) {
         encoder.encodeSerializableValue(SetSerializer(StreamInfoItemSerializer), value)
     }
 
@@ -120,10 +115,7 @@ object StreamInfoItemTreeSetSerializer : KSerializer<TreeSet<StreamInfoItem>> {
  * @constructor Creates an identifier from key data.
  */
 @Serializable
-public data class ChannelIdentifier(
-    @SerialName("service_id") public val serviceId: Int,
-    public val url: String,
-) {
+public data class ChannelIdentifier(@SerialName("service_id") public val serviceId: Int, public val url: String) {
     /**
      * Creates an identifier from an existing [ChannelInfoItem].
      *
@@ -189,10 +181,7 @@ data class Subscription private constructor(private val channels: MutableSet<Cha
      * @param[service] Import service to parse the stream to obtain a list of channel identifiers.
      * @param[stream] Generic input stream to relay to the import service for parsing.
      */
-    public suspend fun import(
-        service: ImportService,
-        stream: InputStream,
-    ) {
+    public suspend fun import(service: ImportService, stream: InputStream) {
         val importedChannels = withContext(Dispatchers.IO) { service.importSubscription(stream) }
         setMutex.withLock { channels.addAll(importedChannels) }
         requestSave()

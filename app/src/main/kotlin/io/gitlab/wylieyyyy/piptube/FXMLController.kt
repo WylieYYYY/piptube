@@ -1,5 +1,6 @@
 package io.gitlab.wylieyyyy.piptube
 
+import io.gitlab.wylieyyyy.piptube.videolist.VideoListGenerator
 import javafx.embed.swing.JFXPanel
 import javafx.geometry.HorizontalDirection
 import javafx.scene.Scene
