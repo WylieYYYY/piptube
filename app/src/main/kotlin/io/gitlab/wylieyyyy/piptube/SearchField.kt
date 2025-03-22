@@ -1,5 +1,6 @@
 package io.gitlab.wylieyyyy.piptube
 
+import io.gitlab.wylieyyyy.piptube.videolist.GeneratorTab
 import io.gitlab.wylieyyyy.piptube.videolist.VideoListGenerator
 import javafx.beans.value.ChangeListener
 import javafx.event.Event
@@ -83,7 +84,7 @@ class SearchField : TextField() {
             // TODO: ParsingException
             val searchQueryHandler = streamingService.searchQHFactory.fromQuery(text, listOf(), null)
             val extractor = streamingService.getSearchExtractor(searchQueryHandler)
-            Pair(
+            GeneratorTab(
                 TabIdentifier(TabIdentifier.TabType.SEARCH, text),
                 VideoListGenerator(extractor = extractor),
             )

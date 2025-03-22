@@ -13,14 +13,39 @@ import org.schabi.newpipe.extractor.search.SearchExtractor.NothingFoundException
  *
  * @property[identifier] Identifier for the tab. It should be generic over the generators since it is shared.
  * @property[primaryGenerator] Generator that will be displayed to the user first without any intervention.
- * @property[secondaryGenerator] Generator that the user can switch to using controls.
+ * @property[secondaryGenerator] Generator that the user can switch to using controls,
+ *  default is a sentinel generator which signals that no switching is allowed.
  * @constructor Creates a tab with the given identifier that can contain the specified generators.
  */
 data class GeneratorTab(
     public val identifier: TabIdentifier,
     public val primaryGenerator: VideoListGenerator,
-    public val secondaryGenerator: VideoListGenerator? = null,
-)
+    public val secondaryGenerator: VideoListGenerator = SENTINEL_NO_SWITCHING_GENERATOR,
+) {
+    private companion object {
+        private val SENTINEL_NO_SWITCHING_GENERATOR = VideoListGenerator()
+    }
+
+    /**
+     * Checks if the secondary generator is provided and can be switched to.
+     *
+     * @return True if the secondary generator is provided, false otherwise.
+     */
+    public fun isSecondaryGeneratorProvided() = secondaryGenerator !== SENTINEL_NO_SWITCHING_GENERATOR
+
+    /**
+     * Gets a new instance of [GeneratorTab] with the primary and secondary generator switched.
+     * Only allowed if a secondary generator is provided.
+     *
+     * @return A new instance with the generators switched.
+     */
+    public fun switchGenerators(): GeneratorTab {
+        if (!isSecondaryGeneratorProvided()) {
+            error("Generator switching is only allowed if a secondary generator is provided")
+        }
+        return GeneratorTab(identifier, secondaryGenerator, primaryGenerator)
+    }
+}
 
 /**
  * Generator for video list items.

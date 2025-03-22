@@ -45,7 +45,7 @@
                         </VBox>
                      </content>
                   </ScrollPane>
-                  <Button fx:id="floatingButton" focusTraversable="false">
+                  <Button fx:id="floatingButton" visible="false" focusTraversable="false">
                      <StackPane.alignment><Pos fx:constant="BOTTOM_RIGHT" /></StackPane.alignment>
                      <shape>
                         <Circle>

@@ -2,7 +2,7 @@ package io.gitlab.wylieyyyy.piptube
 
 import io.gitlab.wylieyyyy.piptube.videolist.ChannelCard
 import io.gitlab.wylieyyyy.piptube.videolist.CommentCard
-import io.gitlab.wylieyyyy.piptube.videolist.InfoCard
+import io.gitlab.wylieyyyy.piptube.videolist.GeneratorTab
 import io.gitlab.wylieyyyy.piptube.videolist.SettingsPage
 import io.gitlab.wylieyyyy.piptube.videolist.SubscriptionPage
 import io.gitlab.wylieyyyy.piptube.videolist.VideoCard
@@ -84,16 +84,7 @@ class ControlPane(
         searchField.windowBoundsHandler = windowBoundsHandler
         searchField.scope = scope
 
-        menuButton.onAction =
-            handler {
-                val page = SettingsPage(scope, subscription)
-                withClearedVideoList {
-                    Pair(
-                        TabIdentifier.SETTINGS,
-                        VideoListGenerator(seenItems = listOf(VideoListGenerator.VideoListItem.Node(page))),
-                    )
-                }
-            }
+        menuButton.onAction = handler { handleMenuButtonActioned() }
 
         tabList.selectionModel.selectedItemProperty().addListener(
             ChangeListener { _, _, newValue ->
@@ -101,11 +92,14 @@ class ControlPane(
                 clearVideoList()
                 scope.launch {
                     if (newValue == null) {
-                        addToVideoList(VideoListGenerator())
+                        addToVideoList(VideoListGenerator(), false)
                     } else {
                         @Suppress("UNCHECKED_CAST")
-                        val generator = newValue.userData as VideoListGenerator
-                        addToVideoList(generator)
+                        val generatorTab = newValue.userData as GeneratorTab
+                        addToVideoList(
+                            generatorTab.primaryGenerator,
+                            generatorTab.isSecondaryGeneratorProvided(),
+                        )
                     }
                 }
             },
@@ -115,12 +109,23 @@ class ControlPane(
             progress.setVisible(videoList.children.isEmpty())
         }
 
+        floatingButton.onAction =
+            handler {
+                @Suppress("UNCHECKED_CAST")
+                val generatorTab = tabList.selectionModel.selectedItem.userData as GeneratorTab
+                withClearedVideoList {
+                    generatorTab.switchGenerators().also {
+                        tabList.selectionModel.selectedItem.userData = it
+                    }
+                }
+            }
+
         scope.launch {
             withClearedVideoList {
                 subscription = Subscription.fromStorageOrNew()
                 subscriptionCache = SubscriptionCache.fromCacheOrNew()
                 val page = SubscriptionPage(controller, subscription, subscriptionCache, progress)
-                Pair(
+                GeneratorTab(
                     TabIdentifier.SUBSCRIPTION,
                     VideoListGenerator(
                         seenItems =
@@ -153,15 +158,15 @@ class ControlPane(
      * No other public methods are available to manipulate the video list,
      * this is to ensure that the video list stays in a consistent state with valid items.
      *
-     * @param[block] Block to be executed to get the identifier and generator for the tab.
+     * @param[block] Block to be executed to get the generator tab.
      *  If the identifier is identical with one that identifies an existing tab,
      *  that tab's generator will be replaced with the given one.
      */
-    public suspend fun withClearedVideoList(block: suspend () -> Pair<TabIdentifier, VideoListGenerator>) {
+    public suspend fun withClearedVideoList(block: suspend () -> GeneratorTab) {
         scrollPane.vvalueProperty().removeListener(infiniteScrollHandler)
         clearVideoList()
 
-        val (identifier, generator) =
+        val generatorTab =
             runCatching {
                 block()
             }.recoverCatching {
@@ -169,29 +174,49 @@ class ControlPane(
                 throw it
             }.getOrThrow()
 
-        val matchedTab = tabList.tabs.firstOrNull { it.id == identifier.toString() }
+        val matchedTab = tabList.tabs.firstOrNull {
+            it.id == generatorTab.identifier.toString()
+        }
         val targetTab =
             matchedTab ?: Tab().apply {
-                userData = generator
-                id = identifier.toString()
-                text = identifier.toString()
+                userData = generatorTab
+                id = generatorTab.identifier.toString()
+                text = generatorTab.identifier.toString()
                 tabList.tabs.add(this)
             }
 
-        targetTab.userData = generator
+        targetTab.userData = generatorTab
         if (tabList.selectionModel.selectedItem == matchedTab) {
-            addToVideoList(generator)
+            addToVideoList(
+                generatorTab.primaryGenerator,
+                generatorTab.isSecondaryGeneratorProvided(),
+            )
         } else {
             tabList.selectionModel.select(targetTab)
+        }
+    }
+
+    private suspend fun handleMenuButtonActioned() {
+        val page = SettingsPage(scope, subscription)
+        withClearedVideoList {
+            GeneratorTab(
+                TabIdentifier.SETTINGS,
+                VideoListGenerator(seenItems = listOf(VideoListGenerator.VideoListItem.Node(page))),
+            )
         }
     }
 
     private fun clearVideoList() {
         tabList.setDisable(true)
         videoList.children.clear()
+        floatingButton.setVisible(false)
     }
 
-    private suspend fun addToVideoList(generator: VideoListGenerator, frameIndex: Int = 0) {
+    private suspend fun addToVideoList(
+        generator: VideoListGenerator,
+        shouldDisplayFloatingButton: Boolean,
+        frameIndex: Int = 0,
+    ) {
         scrollPane.vvalueProperty().removeListener(infiniteScrollHandler)
         val (items, hasNext) = generator.itemsFrom(frameIndex)
 
@@ -212,7 +237,7 @@ class ControlPane(
                     scope.launch {
                         if (newValue as Double > scrollPane.vmax - VideoCard.HEIGHT * 2) {
                             property.removeListener(infiniteScrollHandler)
-                            addToVideoList(generator, frameIndex + items.size)
+                            addToVideoList(generator, shouldDisplayFloatingButton, frameIndex + items.size)
                         }
                     }
                 }
@@ -224,13 +249,14 @@ class ControlPane(
         scrollPane.vvalue = oldScrollVvalue
 
         tabList.setDisable(false)
+        floatingButton.setVisible(shouldDisplayFloatingButton)
     }
 
     private fun createStandardCard(item: InfoItem): Node? = when (item) {
         is ChannelInfoItem ->
             ChannelCard(item, scope, subscription, subscriptionCache) {
                 withClearedVideoList {
-                    Pair(
+                    GeneratorTab(
                         TabIdentifier(TabIdentifier.TabType.CHANNEL, item.name),
                         VideoListGenerator(
                             seenItems = listOf(VideoListGenerator.VideoListItem.InfoItem(item)),
@@ -249,30 +275,16 @@ class ControlPane(
                     val relatedInfo =
                         controller.gotoVideoUrl(item.url)
                             .relatedItems?.items?.map(VideoListGenerator.VideoListItem::InfoItem) ?: listOf()
+                    val relatedGenerator = VideoListGenerator(seenItems = relatedInfo)
 
-                    val relatedVideosPageFactory = { card: InfoCard ->
-                        val seenItems = listOf(VideoListGenerator.VideoListItem.Node(card)) + relatedInfo
-                        Pair(TabIdentifier.RELATED, VideoListGenerator(seenItems))
-                    }
+                    // TODO: ParsingException
+                    val commentLinkHandler = streamingService.commentsLHFactory.fromUrl(item.url)
+                    val commentGenerator = VideoListGenerator(
+                        // TODO: ExtractionException
+                        extractor = streamingService.getCommentsExtractor(commentLinkHandler),
+                    )
 
-                    val switchToCommentsCard = InfoCard("Switch to comments", scope) { switchToCommentsCard: InfoCard ->
-                        withClearedVideoList {
-                            val switchToVideosCard = InfoCard("Switch to videos", scope) {
-                                withClearedVideoList { relatedVideosPageFactory(switchToCommentsCard) }
-                            }
-
-                            // TODO: ParsingException
-                            val commentLinkHandler = streamingService.commentsLHFactory.fromUrl(item.url)
-                            val generator = VideoListGenerator(
-                                seenItems = listOf(VideoListGenerator.VideoListItem.Node(switchToVideosCard)),
-                                // TODO: ExtractionException
-                                extractor = streamingService.getCommentsExtractor(commentLinkHandler),
-                            )
-                            Pair(TabIdentifier.RELATED, generator)
-                        }
-                    }
-
-                    relatedVideosPageFactory(switchToCommentsCard)
+                    GeneratorTab(TabIdentifier.RELATED, relatedGenerator, commentGenerator)
                 }
             }
         else -> null

@@ -4,6 +4,7 @@ import io.gitlab.wylieyyyy.piptube.FXMLController
 import io.gitlab.wylieyyyy.piptube.Subscription
 import io.gitlab.wylieyyyy.piptube.SubscriptionCache
 import io.gitlab.wylieyyyy.piptube.TabIdentifier
+import io.gitlab.wylieyyyy.piptube.videolist.GeneratorTab
 import javafx.scene.control.ProgressIndicator
 import javafx.scene.layout.VBox
 import kotlinx.coroutines.flow.collect
@@ -27,7 +28,7 @@ class SubscriptionPage(
                     }
                     progress.progress = -1.0
 
-                    Pair(
+                    GeneratorTab(
                         TabIdentifier.SUBSCRIPTION,
                         VideoListGenerator(
                             seenItems =

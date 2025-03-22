@@ -1,5 +1,6 @@
 package io.gitlab.wylieyyyy.piptube
 
+import io.gitlab.wylieyyyy.piptube.videolist.GeneratorTab
 import io.gitlab.wylieyyyy.piptube.videolist.VideoListGenerator
 import javafx.embed.swing.JFXPanel
 import javafx.geometry.HorizontalDirection
@@ -95,7 +96,7 @@ class FXMLController(private val controlFrame: JFrame, private val videoWindow: 
             controlPane.withClearedVideoList {
                 player.updateVideo(extractor)
                 // TODO: ExtractionException
-                Pair(
+                GeneratorTab(
                     TabIdentifier.RELATED,
                     VideoListGenerator(
                         seenItems =
