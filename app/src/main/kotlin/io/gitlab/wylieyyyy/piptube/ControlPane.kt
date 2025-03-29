@@ -23,7 +23,10 @@ import javafx.scene.control.TabPane
 import javafx.scene.input.ScrollEvent
 import javafx.scene.layout.VBox
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import org.schabi.newpipe.extractor.InfoItem
 import org.schabi.newpipe.extractor.StreamingService
 import org.schabi.newpipe.extractor.channel.ChannelInfoItem
@@ -48,6 +51,8 @@ class ControlPane(
 
         /** Radius of the floating button for switching generators. */
         public const val FLOATING_BUTTON_RADIUS = 30
+
+        private const val VMAX_SETTLE_DELAY_MILLISECONDS = 50L
     }
 
     @FXML private lateinit var searchField: SearchField
@@ -239,7 +244,6 @@ class ControlPane(
                 ChangeListener { property, _, newValue ->
                     scope.launch {
                         if (newValue as Double > scrollPane.vmax - VideoCard.HEIGHT * 2) {
-                            property.removeListener(infiniteScrollHandler)
                             addToVideoList(generator, shouldDisplayFloatingButton, frameIndex + items.size)
                         }
                     }
@@ -248,8 +252,18 @@ class ControlPane(
         }
 
         videoList.autosize()
+        val newScrollVvalue =
+            calculateNewScrollVvalue(scrollPane.height, oldScrollVvalue, scrollPane.vmax, videoList.height)
         scrollPane.vmax = videoList.height
-        scrollPane.vvalue = oldScrollVvalue
+
+        scrollPane.setDisable(true)
+        scope.launch(Dispatchers.Default) {
+            delay(VMAX_SETTLE_DELAY_MILLISECONDS)
+            withContext(Dispatchers.Main) {
+                scrollPane.vvalue = newScrollVvalue
+                scrollPane.setDisable(false)
+            }
+        }
 
         tabList.setDisable(false)
         floatingButton.setVisible(shouldDisplayFloatingButton)
@@ -291,6 +305,22 @@ class ControlPane(
                 }
             }
         else -> null
+    }
+
+    private fun calculateNewScrollVvalue(
+        scrollPaneHeight: Double,
+        oldVvalue: Double,
+        oldVmax: Double,
+        newVmax: Double,
+    ): Double {
+        val denominator = oldVmax * (newVmax - scrollPaneHeight)
+
+        if (denominator == 0.0) {
+            return oldVvalue
+        }
+
+        // VVALUE[new] - (VVALUE[new] / VMAX[new]) * HEIGHT = VVALUE[old] - (VVALUE[old] / VMAX[old]) * HEIGHT
+        return (oldVvalue * newVmax * (oldVmax - scrollPaneHeight)) / denominator
     }
 
     private fun <T : Event> handler(block: suspend (event: T) -> Unit): EventHandler<T> = object : EventHandler<T> {
