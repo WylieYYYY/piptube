@@ -288,20 +288,7 @@ class ControlPane(
             VideoCard(item, scope) {
                 windowBoundsHandler.resizeToBase()
                 withClearedVideoList {
-                    // TODO: ExtractionException
-                    val relatedInfo =
-                        controller.gotoVideoUrl(item.url)
-                            .relatedItems?.items?.map(VideoListGenerator.VideoListItem::InfoItem) ?: listOf()
-                    val relatedGenerator = VideoListGenerator(seenItems = relatedInfo)
-
-                    // TODO: ParsingException
-                    val commentLinkHandler = streamingService.commentsLHFactory.fromUrl(item.url)
-                    val commentGenerator = VideoListGenerator(
-                        // TODO: ExtractionException
-                        extractor = streamingService.getCommentsExtractor(commentLinkHandler),
-                    )
-
-                    GeneratorTab(TabIdentifier.RELATED, relatedGenerator, commentGenerator)
+                    GeneratorTab.createRelated(controller.gotoVideoUrl(item.url))
                 }
             }
         else -> null

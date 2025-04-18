@@ -95,15 +95,7 @@ class FXMLController(private val controlFrame: JFrame, private val videoWindow: 
             val extractor = videoStack.peek()
             controlPane.withClearedVideoList {
                 player.updateVideo(extractor)
-                // TODO: ExtractionException
-                GeneratorTab(
-                    TabIdentifier.RELATED,
-                    VideoListGenerator(
-                        seenItems =
-                        extractor.relatedItems?.items
-                            ?.map(VideoListGenerator.VideoListItem::InfoItem) ?: listOf(),
-                    ),
-                )
+                GeneratorTab.createRelated(extractor)
             }
         }
     }

@@ -23,7 +23,7 @@ fun main() {
                 focusableWindowState = false
             }
         val videoWindow =
-            JWindow().apply {
+            JWindow(controlFrame).apply {
                 add(JFXPanel())
                 setAlwaysOnTop(true)
                 focusableWindowState = false

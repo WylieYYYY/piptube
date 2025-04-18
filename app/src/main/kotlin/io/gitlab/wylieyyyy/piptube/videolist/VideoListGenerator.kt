@@ -6,6 +6,7 @@ import kotlinx.coroutines.withContext
 import org.schabi.newpipe.extractor.InfoItem
 import org.schabi.newpipe.extractor.ListExtractor
 import org.schabi.newpipe.extractor.search.SearchExtractor.NothingFoundException
+import org.schabi.newpipe.extractor.stream.StreamExtractor
 
 /**
  * Tab that consists of one or two generators.
@@ -22,7 +23,29 @@ data class GeneratorTab(
     public val primaryGenerator: VideoListGenerator,
     public val secondaryGenerator: VideoListGenerator = SENTINEL_NO_SWITCHING_GENERATOR,
 ) {
-    private companion object {
+    companion object {
+        /**
+         * Creates a related tab from an extractor.
+         * It includes related streams as primary, and comments as secondary.
+         *
+         * @param[extractor] Extractor to get items from, its page must be fetched.
+         * @return A new tab with the predefined related identifier.
+         */
+        public fun createRelated(extractor: StreamExtractor): GeneratorTab {
+            // TODO: ExtractionException
+            val relatedInfo = extractor.relatedItems?.items?.map(VideoListGenerator.VideoListItem::InfoItem) ?: listOf()
+            val relatedGenerator = VideoListGenerator(seenItems = relatedInfo)
+
+            // TODO: ParsingException
+            val commentLinkHandler = extractor.service.commentsLHFactory.fromUrl(extractor.url)
+            val commentGenerator = VideoListGenerator(
+                // TODO: ExtractionException
+                extractor = extractor.service.getCommentsExtractor(commentLinkHandler),
+            )
+
+            return GeneratorTab(TabIdentifier.RELATED, relatedGenerator, commentGenerator)
+        }
+
         private val SENTINEL_NO_SWITCHING_GENERATOR = VideoListGenerator()
     }
 

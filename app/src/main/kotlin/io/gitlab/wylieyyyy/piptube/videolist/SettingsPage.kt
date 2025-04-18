@@ -7,10 +7,7 @@ import javafx.stage.FileChooser
 import kotlinx.coroutines.CoroutineScope
 import java.io.FileInputStream
 
-class SettingsPage(
-    private val scope: CoroutineScope,
-    private val subscription: Subscription,
-) : VBox() {
+class SettingsPage(private val scope: CoroutineScope, private val subscription: Subscription) : VBox() {
     init {
         val importCard =
             InfoCard("Import NewPipe subscription", scope) callback@{
