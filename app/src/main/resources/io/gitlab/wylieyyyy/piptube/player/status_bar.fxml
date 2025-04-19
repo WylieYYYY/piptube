@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.layout.BorderPane?>
+<?import javafx.scene.layout.StackPane?>
+<?import javafx.scene.shape.Rectangle?>
+
+<?import javafx.scene.layout.Region?>
+<?import io.gitlab.wylieyyyy.piptube.player.StatusBar?>
+
+<fx:root xmlns:fx="http://javafx.com/fxml/1" type="javafx.scene.layout.VBox">
+   <maxHeight><Region fx:constant="USE_PREF_SIZE" /></maxHeight>
+   <children>
+      <StackPane alignment="BOTTOM_LEFT">
+         <children>
+            <Rectangle fx:id="progressBackgroundRectangle" fill="gray">
+               <width><StatusBar fx:constant="SEEKBAR_WIDTH" /></width>
+               <height><StatusBar fx:constant="SEEKBAR_HEIGHT" /></height>
+            </Rectangle>
+            <Rectangle fx:id="progressRectangle" fill="red">
+               <height><StatusBar fx:constant="SEEKBAR_HEIGHT" /></height>
+            </Rectangle>
+         </children>
+      </StackPane>
+      <BorderPane>
+         <left><Label fx:id="titleLabel" visible="false" managed="false" text="Untitled Video" /></left>
+         <right><Label fx:id="progressLabel" visible="false" managed="false" text="--:--/--:--" /></right>
+      </BorderPane>
+   </children>
+</fx:root>

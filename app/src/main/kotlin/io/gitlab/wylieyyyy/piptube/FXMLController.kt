@@ -1,7 +1,6 @@
 package io.gitlab.wylieyyyy.piptube
 
 import io.gitlab.wylieyyyy.piptube.videolist.GeneratorTab
-import io.gitlab.wylieyyyy.piptube.videolist.VideoListGenerator
 import javafx.embed.swing.JFXPanel
 import javafx.geometry.HorizontalDirection
 import javafx.scene.Scene
@@ -88,10 +87,8 @@ class FXMLController(private val controlFrame: JFrame, private val videoWindow: 
      * This interacts with global state as it interacts with the stack of videos.
      */
     public suspend fun onBack() {
-        val lastVideo = videoStack.pop()
-        if (videoStack.empty()) {
-            videoStack.push(lastVideo)
-        } else {
+        if (videoStack.size > 1) {
+            videoStack.pop()
             val extractor = videoStack.peek()
             controlPane.withClearedVideoList {
                 player.updateVideo(extractor)

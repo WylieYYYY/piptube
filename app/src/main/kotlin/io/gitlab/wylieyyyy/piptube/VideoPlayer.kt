@@ -1,19 +1,18 @@
 package io.gitlab.wylieyyyy.piptube
 
+import io.gitlab.wylieyyyy.piptube.player.StatusBar
 import javafx.event.Event
 import javafx.event.EventHandler
 import javafx.fxml.FXML
 import javafx.fxml.FXMLLoader
 import javafx.geometry.HorizontalDirection
 import javafx.scene.Parent
-import javafx.scene.control.Label
 import javafx.scene.control.ProgressIndicator
 import javafx.scene.image.ImageView
 import javafx.scene.input.MouseButton
 import javafx.scene.input.MouseEvent
 import javafx.scene.layout.StackPane
 import javafx.scene.shape.Rectangle
-import javafx.util.Duration
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.MainScope
@@ -27,8 +26,6 @@ import uk.co.caprica.vlcj.javafx.videosurface.ImageViewVideoSurface
 import uk.co.caprica.vlcj.player.base.MediaPlayer
 import uk.co.caprica.vlcj.player.base.MediaPlayerEventAdapter
 import java.awt.Point
-import kotlin.time.DurationUnit
-import kotlin.time.toDuration
 
 /**
  * Main video player node containing video-specific control.
@@ -41,27 +38,11 @@ class VideoPlayer(
     private val windowBoundsHandler: WindowBoundsHandler,
     private val scope: CoroutineScope,
 ) : StackPane() {
-    /** Predefined dimensional constants. */
-    companion object {
-        /** Uses common window width as seekbar's width. */
-        public const val SEEKBAR_WIDTH = FXMLController.BASE_WIDTH
-
-        /** Height of a collapsed seekbar. */
-        public const val SEEKBAR_HEIGHT = 3
-
-        /** Height of an expanded seekbar. */
-        public const val SEEKBAR_EXPANDED_HEIGHT = SEEKBAR_HEIGHT * 3
-    }
+    @FXML private lateinit var videoBackgroundRectangle: Rectangle
 
     @FXML private lateinit var videoView: ImageView
 
-    @FXML private lateinit var progressBackgroundRectangle: Rectangle
-
-    @FXML private lateinit var progressRectangle: Rectangle
-
-    @FXML private lateinit var titleLabel: Label
-
-    @FXML private lateinit var progressLabel: Label
+    @FXML private lateinit var statusBar: StatusBar
 
     @FXML private lateinit var progress: ProgressIndicator
 
@@ -82,6 +63,9 @@ class VideoPlayer(
     private fun initialize() {
         stylesheets.add(this::class.java.getResource("video_player.css").toString())
 
+        statusBar.scope = scope
+        statusBar.embeddedMediaPlayer = embeddedMediaPlayer
+
         embeddedMediaPlayer.videoSurface().set(ImageViewVideoSurface(videoView))
 
         embeddedMediaPlayer.events().addMediaPlayerEventListener(
@@ -95,39 +79,16 @@ class VideoPlayer(
                 }
 
                 override fun timeChanged(mediaPlayer: MediaPlayer, newTime: Long) {
-                    scope.launch { updateVideoProgress() }
+                    scope.launch { statusBar.updateVideoProgress() }
                 }
             },
         )
 
-        videoView.onMouseClicked =
-            handler {
-                if (isMouseEventDrag) return@handler
+        videoBackgroundRectangle.onMouseClicked = handler(::handleVideoAreaClicked)
+        videoView.onMouseClicked = handler(::handleVideoAreaClicked)
 
-                if (it.button == MouseButton.PRIMARY) {
-                    embeddedMediaPlayer.controls().pause()
-                }
-                if (it.button == MouseButton.SECONDARY) controller.onBack()
-                if (it.button == MouseButton.MIDDLE && !windowBoundsHandler.resizeToBase()) {
-                    windowBoundsHandler.moveToBottom(!windowBoundsHandler.horizontalDirection())
-                }
-            }
-        progressBackgroundRectangle.onMouseClicked = handler(::handleSeekbarClicked)
-        progressRectangle.onMouseClicked = handler(::handleSeekbarClicked)
-        onMouseEntered =
-            handler {
-                titleLabel.setVisible(true)
-                progressLabel.setVisible(true)
-                progressBackgroundRectangle.height = SEEKBAR_EXPANDED_HEIGHT.toDouble()
-                progressRectangle.height = SEEKBAR_EXPANDED_HEIGHT.toDouble()
-            }
-        onMouseExited =
-            handler {
-                titleLabel.setVisible(false)
-                progressLabel.setVisible(false)
-                progressBackgroundRectangle.height = SEEKBAR_HEIGHT.toDouble()
-                progressRectangle.height = SEEKBAR_HEIGHT.toDouble()
-            }
+        onMouseEntered = handler { statusBar.setExpanded(true) }
+        onMouseExited = handler { statusBar.setExpanded(false) }
         onScroll =
             handler {
                 if (it.deltaY < 0 && !controller.scrollControlPane(it)) {
@@ -147,8 +108,6 @@ class VideoPlayer(
                 isMouseEventDrag = true
                 windowBoundsHandler.updateMove(Point(it.screenX.toInt(), it.screenY.toInt()))
             }
-        titleLabel.managedProperty().bind(titleLabel.visibleProperty())
-        progressLabel.managedProperty().bind(progressLabel.visibleProperty())
     }
 
     /**
@@ -186,7 +145,7 @@ class VideoPlayer(
         videoViewCoroutineScope.coroutineContext.cancelChildren()
 
         // TODO: ParsingException
-        titleLabel.text = extractor.name
+        statusBar.title = extractor.name
 
         scope.launch {
             // TODO: ExtractionException, no video stream
@@ -196,31 +155,16 @@ class VideoPlayer(
         }
     }
 
-    private fun updateVideoProgress() {
-        fun Long.toDurationString(): String = toDuration(
-            DurationUnit.MILLISECONDS,
-        ).toComponents { hours, minutes, seconds, _ ->
-            val minuteSecondPart =
-                "${minutes.toString().padStart(2, '0')}:" +
-                    "${seconds.toString().padStart(2, '0')}"
-            if (hours != 0L) {
-                "${hours.toString().padStart(2, '0')}:$minuteSecondPart"
-            } else {
-                minuteSecondPart
-            }
+    private suspend fun handleVideoAreaClicked(event: MouseEvent) {
+        if (isMouseEventDrag) return
+
+        if (event.button == MouseButton.PRIMARY) {
+            embeddedMediaPlayer.controls().pause()
         }
-
-        progressRectangle.width = embeddedMediaPlayer.status().time().toDouble() /
-            embeddedMediaPlayer.status().length() * SEEKBAR_WIDTH
-        progressLabel.text =
-            embeddedMediaPlayer.status().run {
-                time().toDurationString() + '/' + length().toDurationString()
-            }
-    }
-
-    private fun handleSeekbarClicked(event: MouseEvent) {
-        embeddedMediaPlayer.controls().setPosition((event.x / SEEKBAR_WIDTH).toFloat())
-        updateVideoProgress()
+        if (event.button == MouseButton.SECONDARY) controller.onBack()
+        if (event.button == MouseButton.MIDDLE && !windowBoundsHandler.resizeToBase()) {
+            windowBoundsHandler.moveToBottom(!windowBoundsHandler.horizontalDirection())
+        }
     }
 
     private fun <T : Event> handler(block: suspend (event: T) -> Unit): EventHandler<T> = object : EventHandler<T> {
@@ -229,12 +173,6 @@ class VideoPlayer(
         }
     }
 }
-
-/** Operator for multiplying a duration by a scalar. */
-operator fun Duration.times(other: Double): Duration = multiply(other)
-
-/** Operator for dividing a duration by a scalar. */
-operator fun Duration.div(other: Double): Duration = divide(other)
 
 /** Operator for flipping a horizontal direction. */
 operator fun HorizontalDirection.not() = if (this == HorizontalDirection.RIGHT) {

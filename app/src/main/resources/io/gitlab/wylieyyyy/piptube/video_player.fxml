@@ -1,21 +1,17 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
-<?import javafx.scene.control.Label?>
 <?import javafx.scene.control.ProgressIndicator?>
 <?import javafx.scene.image.ImageView?>
-<?import javafx.scene.layout.BorderPane?>
 <?import javafx.scene.layout.StackPane?>
-<?import javafx.scene.layout.VBox?>
 <?import javafx.scene.shape.Rectangle?>
 
-<?import javafx.scene.layout.Region?>
 <?import io.gitlab.wylieyyyy.piptube.FXMLController?>
-<?import io.gitlab.wylieyyyy.piptube.VideoPlayer?>
+<?import io.gitlab.wylieyyyy.piptube.player.StatusBar?>
 
 
 <fx:root xmlns:fx="http://javafx.com/fxml/1" type="javafx.scene.layout.StackPane">
    <children>
-      <Rectangle fill="black">
+      <Rectangle fx:id="videoBackgroundRectangle" fill="black">
          <StackPane.alignment>CENTER</StackPane.alignment>
          <width><FXMLController fx:constant="BASE_WIDTH" /></width>
          <height><FXMLController fx:constant="BASE_HEIGHT" /></height>
@@ -24,27 +20,9 @@
          <fitWidth><FXMLController fx:constant="BASE_WIDTH" /></fitWidth>
          <fitHeight><FXMLController fx:constant="BASE_HEIGHT" /></fitHeight>
       </ImageView>
-      <VBox fx:id="statusBar">
+      <StatusBar fx:id="statusBar">
          <StackPane.alignment>BOTTOM_LEFT</StackPane.alignment>
-         <maxHeight><Region fx:constant="USE_PREF_SIZE" /></maxHeight>
-         <children>
-            <StackPane alignment="BOTTOM_LEFT">
-               <children>
-                  <Rectangle fx:id="progressBackgroundRectangle" fill="gray">
-                     <width><VideoPlayer fx:constant="SEEKBAR_WIDTH" /></width>
-                     <height><VideoPlayer fx:constant="SEEKBAR_HEIGHT" /></height>
-                  </Rectangle>
-                  <Rectangle fx:id="progressRectangle" fill="red">
-                     <height><VideoPlayer fx:constant="SEEKBAR_HEIGHT" /></height>
-                  </Rectangle>
-               </children>
-            </StackPane>
-            <BorderPane>
-               <left><Label fx:id="titleLabel" visible="false" managed="false" text="Untitled Video" /></left>
-               <right><Label fx:id="progressLabel" visible="false" managed="false" text="--:--/--:--" /></right>
-            </BorderPane>
-         </children>
-      </VBox>
+      </StatusBar>
       <ProgressIndicator fx:id="progress" visible="false" mouseTransparent="true">
          <progress><ProgressIndicator fx:constant="INDETERMINATE_PROGRESS" /></progress>
       </ProgressIndicator>
