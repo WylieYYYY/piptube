@@ -1,9 +1,9 @@
 package io.gitlab.wylieyyyy.piptube.videolist
 
 import io.gitlab.wylieyyyy.piptube.FXMLController
-import io.gitlab.wylieyyyy.piptube.Subscription
-import io.gitlab.wylieyyyy.piptube.SubscriptionCache
 import io.gitlab.wylieyyyy.piptube.TabIdentifier
+import io.gitlab.wylieyyyy.piptube.storage.Subscription
+import io.gitlab.wylieyyyy.piptube.storage.SubscriptionCache
 import io.gitlab.wylieyyyy.piptube.videolist.GeneratorTab
 import javafx.scene.control.ProgressIndicator
 import javafx.scene.layout.VBox

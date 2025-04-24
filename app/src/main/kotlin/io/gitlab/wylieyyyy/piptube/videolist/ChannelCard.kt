@@ -1,8 +1,8 @@
 package io.gitlab.wylieyyyy.piptube.videolist
 
-import io.gitlab.wylieyyyy.piptube.ChannelIdentifier
-import io.gitlab.wylieyyyy.piptube.Subscription
-import io.gitlab.wylieyyyy.piptube.SubscriptionCache
+import io.gitlab.wylieyyyy.piptube.storage.ChannelIdentifier
+import io.gitlab.wylieyyyy.piptube.storage.Subscription
+import io.gitlab.wylieyyyy.piptube.storage.SubscriptionCache
 import javafx.event.Event
 import javafx.event.EventHandler
 import javafx.fxml.FXML

@@ -1,4 +1,4 @@
-package io.gitlab.wylieyyyy.piptube
+package io.gitlab.wylieyyyy.piptube.storage
 
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json

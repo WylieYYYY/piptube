@@ -1,5 +1,7 @@
 package io.gitlab.wylieyyyy.piptube
 
+import io.gitlab.wylieyyyy.piptube.storage.Subscription
+import io.gitlab.wylieyyyy.piptube.storage.SubscriptionCache
 import io.gitlab.wylieyyyy.piptube.videolist.ChannelCard
 import io.gitlab.wylieyyyy.piptube.videolist.CommentCard
 import io.gitlab.wylieyyyy.piptube.videolist.GeneratorTab

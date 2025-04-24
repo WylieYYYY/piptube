@@ -1,4 +1,4 @@
-package io.gitlab.wylieyyyy.piptube
+package io.gitlab.wylieyyyy.piptube.storage
 
 import com.mayakapps.kache.FileKache
 import com.mayakapps.kache.KacheStrategy

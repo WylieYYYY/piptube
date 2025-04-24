@@ -15,8 +15,10 @@ import javafx.scene.layout.StackPane
 import javafx.scene.shape.Rectangle
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.MainScope
 import kotlinx.coroutines.cancelChildren
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.schabi.newpipe.extractor.StreamingService
@@ -25,7 +27,9 @@ import uk.co.caprica.vlcj.factory.MediaPlayerFactory
 import uk.co.caprica.vlcj.javafx.videosurface.ImageViewVideoSurface
 import uk.co.caprica.vlcj.player.base.MediaPlayer
 import uk.co.caprica.vlcj.player.base.MediaPlayerEventAdapter
+import uk.co.caprica.vlcj.player.base.State
 import java.awt.Point
+import java.util.concurrent.atomic.AtomicReference
 
 /**
  * Main video player node containing video-specific control.
@@ -38,6 +42,12 @@ class VideoPlayer(
     private val windowBoundsHandler: WindowBoundsHandler,
     private val scope: CoroutineScope,
 ) : StackPane() {
+    private companion object {
+        private const val DOUBLECLICK_TIMEOUT = 250L
+
+        private const val SKIP_TIME_MILLISECONDS = 10000L
+    }
+
     @FXML private lateinit var videoBackgroundRectangle: Rectangle
 
     @FXML private lateinit var videoView: ImageView
@@ -48,8 +58,8 @@ class VideoPlayer(
 
     private var isMouseEventDrag = false
     private val videoViewCoroutineScope = MainScope()
-    private val mediaPlayerFactory = MediaPlayerFactory()
-    private val embeddedMediaPlayer = mediaPlayerFactory.mediaPlayers().newEmbeddedMediaPlayer()
+    private val embeddedMediaPlayer = MediaPlayerFactory().mediaPlayers().newEmbeddedMediaPlayer()
+    private var resumeJob: AtomicReference<Job?> = AtomicReference(null)
 
     init {
         val loader = FXMLLoader(this::class.java.getResource("video_player.fxml"))
@@ -159,7 +169,27 @@ class VideoPlayer(
         if (isMouseEventDrag) return
 
         if (event.button == MouseButton.PRIMARY) {
-            embeddedMediaPlayer.controls().pause()
+            val previousResumeJob = resumeJob.getAndSet(null)?.apply { cancel() }
+
+            if (event.clickCount == 1) {
+                val wasPaused = embeddedMediaPlayer.status().state() == State.PAUSED
+                embeddedMediaPlayer.controls().setPause(true)
+
+                if (wasPaused) {
+                    resumeJob.set(
+                        scope.launch {
+                            delay(DOUBLECLICK_TIMEOUT)
+                            embeddedMediaPlayer.controls().setPause(false)
+                        },
+                    )
+                }
+            }
+            if (event.clickCount > 1) {
+                val isForward = event.sceneX > FXMLController.BASE_WIDTH / 2
+                embeddedMediaPlayer.controls().skipTime(SKIP_TIME_MILLISECONDS * (if (isForward) 1 else -1))
+                if (previousResumeJob == null && event.clickCount == 2) embeddedMediaPlayer.controls().setPause(false)
+                statusBar.updateVideoProgress()
+            }
         }
         if (event.button == MouseButton.SECONDARY) controller.onBack()
         if (event.button == MouseButton.MIDDLE && !windowBoundsHandler.resizeToBase()) {

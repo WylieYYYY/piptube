@@ -1,7 +1,7 @@
 package io.gitlab.wylieyyyy.piptube.videolist
 
-import io.gitlab.wylieyyyy.piptube.NewPipeImportService
-import io.gitlab.wylieyyyy.piptube.Subscription
+import io.gitlab.wylieyyyy.piptube.storage.NewPipeImportService
+import io.gitlab.wylieyyyy.piptube.storage.Subscription
 import javafx.scene.layout.VBox
 import javafx.stage.FileChooser
 import kotlinx.coroutines.CoroutineScope
