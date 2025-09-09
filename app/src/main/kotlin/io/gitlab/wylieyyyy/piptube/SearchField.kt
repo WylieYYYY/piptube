@@ -83,6 +83,7 @@ class SearchField : TextField() {
 
             // TODO: ParsingException
             val searchQueryHandler = streamingService.searchQHFactory.fromQuery(text, listOf(), null)
+            // TODO: ExtractionException
             val extractor = streamingService.getSearchExtractor(searchQueryHandler)
             GeneratorTab(
                 TabIdentifier(TabIdentifier.TabType.SEARCH, text),

@@ -1,5 +1,6 @@
 package io.gitlab.wylieyyyy.piptube
 
+import io.gitlab.wylieyyyy.piptube.storage.SubscribedChannelInfoItemCache
 import io.gitlab.wylieyyyy.piptube.storage.Subscription
 import io.gitlab.wylieyyyy.piptube.storage.SubscriptionCache
 import io.gitlab.wylieyyyy.piptube.videolist.ChannelCard
@@ -73,6 +74,7 @@ class ControlPane(
 
     private lateinit var subscription: Subscription
     private lateinit var subscriptionCache: SubscriptionCache
+    private lateinit var subscribedChannelInfoItemCache: SubscribedChannelInfoItemCache
     private var infiniteScrollHandler = ChangeListener<Number> { _, _, _ -> Unit }
 
     init {
@@ -102,7 +104,7 @@ class ControlPane(
                 clearVideoList()
                 scope.launch {
                     if (newValue == null) {
-                        addToVideoList(VideoListGenerator(), false)
+                        addToVideoList(VideoListGenerator(dynamicFlow = null), false)
                     } else {
                         @Suppress("UNCHECKED_CAST")
                         val generatorTab = newValue.userData as GeneratorTab
@@ -134,6 +136,7 @@ class ControlPane(
             withClearedVideoList {
                 subscription = Subscription.fromStorageOrNew()
                 subscriptionCache = SubscriptionCache.fromCacheOrNew()
+                subscribedChannelInfoItemCache = SubscribedChannelInfoItemCache.fromCacheOrNew()
                 val page = SubscriptionPage(controller, subscription, subscriptionCache, progress)
                 GeneratorTab(
                     TabIdentifier.SUBSCRIPTION,
@@ -141,6 +144,7 @@ class ControlPane(
                         seenItems =
                         listOf(VideoListGenerator.VideoListItem.Node(page)) +
                             subscriptionCache.seenItems().map(VideoListGenerator.VideoListItem::InfoItem),
+                        dynamicFlow = null,
                     ),
                 )
             }
@@ -211,7 +215,7 @@ class ControlPane(
         withClearedVideoList {
             GeneratorTab(
                 TabIdentifier.SETTINGS,
-                VideoListGenerator(seenItems = listOf(VideoListGenerator.VideoListItem.Node(page))),
+                VideoListGenerator(seenItems = listOf(VideoListGenerator.VideoListItem.Node(page)), dynamicFlow = null),
             )
         }
     }
@@ -243,7 +247,7 @@ class ControlPane(
 
         if (hasNext) {
             infiniteScrollHandler =
-                ChangeListener { property, _, newValue ->
+                ChangeListener { _, _, newValue ->
                     scope.launch {
                         if (newValue as Double > scrollPane.vmax - VideoCard.HEIGHT * 2) {
                             addToVideoList(generator, shouldDisplayFloatingButton, frameIndex + items.size)
@@ -273,12 +277,13 @@ class ControlPane(
 
     private fun createStandardCard(item: InfoItem): Node? = when (item) {
         is ChannelInfoItem ->
-            ChannelCard(item, scope, subscription, subscriptionCache) {
+            ChannelCard(item, scope, subscription, subscriptionCache, subscribedChannelInfoItemCache) {
                 withClearedVideoList {
                     GeneratorTab(
                         TabIdentifier(TabIdentifier.TabType.CHANNEL, item.name),
                         VideoListGenerator(
                             seenItems = listOf(VideoListGenerator.VideoListItem.InfoItem(item)),
+                            // TODO: ExtractionException
                             extractor = streamingService.getFeedExtractor(item.url),
                         ),
                     )

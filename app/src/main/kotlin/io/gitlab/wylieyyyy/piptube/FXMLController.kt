@@ -40,6 +40,7 @@ class FXMLController(private val controlFrame: JFrame, private val videoWindow: 
     private val youtubeService =
         run {
             NewPipe.init(DownloaderImpl)
+            // TODO: ExtractionException
             NewPipe.getService("YouTube")
         }
     private val videoStack = Stack<StreamExtractor>()

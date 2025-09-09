@@ -2,7 +2,14 @@ package io.gitlab.wylieyyyy.piptube.videolist
 
 import io.gitlab.wylieyyyy.piptube.TabIdentifier
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
+import kotlinx.coroutines.MainScope
+import kotlinx.coroutines.channels.ClosedReceiveChannelException
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.emitAll
+import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.flow.produceIn
 import org.schabi.newpipe.extractor.InfoItem
 import org.schabi.newpipe.extractor.ListExtractor
 import org.schabi.newpipe.extractor.search.SearchExtractor.NothingFoundException
@@ -34,7 +41,7 @@ data class GeneratorTab(
         public fun createRelated(extractor: StreamExtractor): GeneratorTab {
             // TODO: ExtractionException
             val relatedInfo = extractor.relatedItems?.items?.map(VideoListGenerator.VideoListItem::InfoItem) ?: listOf()
-            val relatedGenerator = VideoListGenerator(seenItems = relatedInfo)
+            val relatedGenerator = VideoListGenerator(seenItems = relatedInfo, dynamicFlow = null)
 
             // TODO: ParsingException
             val commentLinkHandler = extractor.service.commentsLHFactory.fromUrl(extractor.url)
@@ -46,7 +53,7 @@ data class GeneratorTab(
             return GeneratorTab(TabIdentifier.RELATED, relatedGenerator, commentGenerator)
         }
 
-        private val SENTINEL_NO_SWITCHING_GENERATOR = VideoListGenerator()
+        private val SENTINEL_NO_SWITCHING_GENERATOR = VideoListGenerator(dynamicFlow = null)
     }
 
     /**
@@ -76,14 +83,11 @@ data class GeneratorTab(
  * Items can be randomly accessed by item index rather than dealing with pages.
  *
  * @param[seenItems] List of static video list items, the default value is an empty list.
- * @param[extractor] Extractor to fetch dynamic items from, null if no dynamic items are required.
+ * @param[dynamicFlow] Flow to fetch dynamic items from, null if no dynamic items are required.
  *  The default value is null.
  * @constructor Creates a generator with the given static and dynamic items.
  */
-class VideoListGenerator(
-    seenItems: List<VideoListItem> = listOf(),
-    private val extractor: ListExtractor<out InfoItem>? = null,
-) {
+class VideoListGenerator(seenItems: List<VideoListItem> = listOf(), dynamicFlow: Flow<InfoItem>? = null) {
     private companion object {
         private const val PAGE_SIZE = 10
     }
@@ -103,8 +107,21 @@ class VideoListGenerator(
      */
     public val seenItems = seenItems.toMutableList<VideoListItem>()
 
-    private val sentinelInitialPage = ListExtractor.InfoItemsPage(listOf(), null, listOf())
-    private var currentPage: ListExtractor.InfoItemsPage<out InfoItem> = sentinelInitialPage
+    private val dynamicChannel = dynamicFlow?.produceIn(MainScope())
+    private var isFlowQueried = false
+    private var isFlowExhausted = false
+
+    /**
+     * Creates a generator with the given static and dynamic items.
+     *
+     * @param[seenItems] List of static video list items, the default value is an empty list.
+     * @param[extractor] Extractor to fetch dynamic items from, null if no dynamic items are required.
+     *  The default value is null.
+     */
+    public constructor(
+        seenItems: List<VideoListItem> = listOf(),
+        extractor: ListExtractor<out InfoItem>? = null,
+    ) : this(seenItems, extractor?.asFlow())
 
     /**
      * Checks whether this generator is proper.
@@ -113,7 +130,7 @@ class VideoListGenerator(
      *
      * @return True if this generator is proper by this definition, false otherwise.
      */
-    public fun isProper(): Boolean = extractor == null || currentPage !== sentinelInitialPage
+    public fun isProper(): Boolean = dynamicChannel == null || isFlowQueried
 
     /**
      * Checks whether this generator has fetched all dynamic items.
@@ -121,9 +138,7 @@ class VideoListGenerator(
      * @return True if the generator contains only static items or all dynamic items have been
      *  fetched, false otherwise.
      */
-    public fun isExhausted(): Boolean = extractor == null ||
-        (currentPage !== sentinelInitialPage && !currentPage.hasNextPage()) ||
-        currentPage === ListExtractor.InfoItemsPage.emptyPage<InfoItem>()
+    public fun isExhausted(): Boolean = dynamicChannel == null || isFlowExhausted
 
     /**
      * Random accessor for items in this generator, fetch if necessary.
@@ -136,52 +151,61 @@ class VideoListGenerator(
     public suspend fun itemsFrom(index: Int): Pair<List<VideoListItem>, Boolean> {
         val items = seenItems.asSequence().drop(index).take(PAGE_SIZE).toMutableList()
         while (items.size < PAGE_SIZE && !isExhausted()) {
-            items.addAll(unseenItems())
+            isFlowQueried = true
+
+            try {
+                val unseenItem = VideoListItem.InfoItem(dynamicChannel!!.receive())
+                seenItems.add(unseenItem)
+                items.add(unseenItem)
+            } catch (_: ClosedReceiveChannelException) {
+                isFlowExhausted = true
+            }
         }
         val hasNext = index + PAGE_SIZE < seenItems.size || !isExhausted()
         return Pair(items, hasNext)
     }
+}
 
-    /**
-     * Fetches the next batch of unseen items.
-     *
-     * @return List of [VideoListItem],
-     *  the variant of the items is always [VideoListItem.InfoItem].
-     */
-    public suspend fun unseenItems(): List<VideoListItem> {
-        if (extractor == null) return listOf()
+/**
+ * Creates a flow that emits info items from the given extractor.
+ *
+ * @receiver Extractor to get items from.
+ * @return The flow that emits the extracted info items.
+ */
+fun ListExtractor<out InfoItem>.asFlow() = flow<InfoItem> {
+    val sentinelInitialPage = ListExtractor.InfoItemsPage(listOf(), null, listOf())
+    var currentPage: ListExtractor.InfoItemsPage<out InfoItem> = sentinelInitialPage
 
-        return withContext(Dispatchers.IO) {
-            // TODO: ExtractionException, IOException
-            extractor.fetchPage()
-
-            // TODO: ExtractionException, IOException
-            val items =
-                runCatching {
-                    currentPage = nextPage()
-                    currentPage.items
-                }.recoverCatching {
-                    when (it) {
-                        is NothingFoundException -> listOf()
-                        else -> throw it
-                    }
-                }.getOrThrow()
-
-            items.map(VideoListItem::InfoItem).apply {
-                seenItems.addAll(this)
-            }
-        }
-    }
-
-    private fun nextPage(): ListExtractor.InfoItemsPage<out InfoItem> = currentPage.let {
+    fun nextPage(): ListExtractor.InfoItemsPage<out InfoItem> = currentPage.let {
         (
             if (it === sentinelInitialPage) {
-                extractor?.initialPage
+                initialPage
             } else if (it.hasNextPage()) {
-                extractor?.getPage(it.nextPage)
+                getPage(it.nextPage)
             } else {
                 null
             }
             ) ?: ListExtractor.InfoItemsPage.emptyPage()
     }
-}
+
+    while ((currentPage === sentinelInitialPage || currentPage.hasNextPage()) &&
+        currentPage !== ListExtractor.InfoItemsPage.emptyPage<InfoItem>()
+    ) {
+        // TODO: ExtractionException, IOException
+        fetchPage()
+
+        // TODO: ExtractionException, IOException
+        val items =
+            runCatching {
+                currentPage = nextPage()
+                currentPage.items.toTypedArray()
+            }.recoverCatching {
+                when (it) {
+                    is NothingFoundException -> arrayOf()
+                    else -> throw it
+                }
+            }.getOrThrow()
+
+        emitAll(flowOf(*items))
+    }
+}.flowOn(Dispatchers.IO)

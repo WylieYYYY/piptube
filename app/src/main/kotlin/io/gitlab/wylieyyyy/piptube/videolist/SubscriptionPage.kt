@@ -36,6 +36,7 @@ class SubscriptionPage(
                                 subscriptionCache.seenItems().map(
                                     VideoListGenerator.VideoListItem::InfoItem,
                                 ),
+                            dynamicFlow = null,
                         ),
                     )
                 }

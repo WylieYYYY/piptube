@@ -74,6 +74,9 @@ open class JavaSerializableSerializer<T : JavaSerializable>(private val clazz: C
     }
 }
 
+/** [KSerializer] for NewPipe [ChannelInfoItem]. */
+object ChannelInfoItemSerializer : JavaSerializableSerializer<ChannelInfoItem>(ChannelInfoItem::class.java)
+
 /** [KSerializer] for NewPipe [StreamInfoItem]. */
 object StreamInfoItemSerializer : JavaSerializableSerializer<StreamInfoItem>(StreamInfoItem::class.java)
 
@@ -115,7 +118,7 @@ object StreamInfoItemTreeSetSerializer : KSerializer<TreeSet<StreamInfoItem>> {
  * @constructor Creates an identifier from key data.
  */
 @Serializable
-public data class ChannelIdentifier(@SerialName("service_id") public val serviceId: Int, public val url: String) {
+data class ChannelIdentifier(@SerialName("service_id") public val serviceId: Int, public val url: String) {
     /**
      * Creates an identifier from an existing [ChannelInfoItem].
      *
@@ -238,6 +241,143 @@ private fun <T> serializer(): KSerializer<T> = throw NotImplementedError(
 )
 
 /**
+ * Container for caching [ChannelInfoItem] of subscribed channels.
+ * Fetching usually happens when subscribing without clicking on a card (import for example),
+ * or if the cache is deleted.
+ * Cbor serializer requires an experimental opt in.
+ */
+@OptIn(ExperimentalSerializationApi::class)
+@Serializable
+class SubscribedChannelInfoItemCache private constructor(
+    private val channelItemMap: HashMap<
+        ChannelIdentifier,
+        @Serializable(ChannelInfoItemSerializer::class)
+        ChannelInfoItem,
+        >,
+) {
+    /**
+     * Factory method for creating the cache container.
+     * There are no other constructors as this must accompany persistent storage set up.
+     */
+    companion object {
+        /**
+         * Fetches cache container from persistent storage.
+         * Creates and stores an empty container if there isn't one that was persisted.
+         *
+         * @return Cache container, either new or from persistent storage.
+         */
+        public suspend fun fromCacheOrNew(): SubscribedChannelInfoItemCache = withContext(Dispatchers.IO) {
+            // TODO: fail mkdirs
+            PATH.parent.toFile().mkdirs()
+
+            runCatching {
+                FileInputStream(PATH.toString()).use {
+                    // TODO: IOException, SerializationException
+                    Cbor.decodeFromByteArray<SubscribedChannelInfoItemCache>(serializer(), it.readAllBytes())
+                }
+            }.recoverCatching {
+                when (it) {
+                    is FileNotFoundException -> {
+                        val newCache = SubscribedChannelInfoItemCache(HashMap())
+                        newCache.requestSave()
+                        newCache
+                    }
+                    else -> throw it
+                }
+            }.getOrThrow()
+        }
+
+        private val PATH =
+            Path(System.getProperty("user.home"))
+                .resolve(".cache").resolve("piptube").resolve("subscribed_channel_info_item_cache.cbor")
+    }
+
+    @Transient private val setMutex = Mutex()
+
+    @Transient private val hasPending = AtomicBoolean(false)
+
+    /**
+     * Puts a [ChannelInfoItem] into cache.
+     *
+     * @param[item] Item to be cached.
+     */
+    public suspend fun cache(item: ChannelInfoItem) {
+        val channel = ChannelIdentifier(item)
+        setMutex.withLock { channelItemMap.put(channel, item) }
+        requestSave()
+    }
+
+    /**
+     * Removes a [ChannelInfoItem] from cache.
+     *
+     * @param[channel] Identifier for the channel to be uncached.
+     */
+    public suspend fun uncache(channel: ChannelIdentifier) {
+        setMutex.withLock { channelItemMap.remove(channel) }
+        requestSave()
+    }
+
+    /**
+     * Gets a flow of info items for the channels that are identified with the given identifiers.
+     * Fetches and writes immediately to the cache if the channel is not cached.
+     *
+     * @param[channels] Channels to get info items for.
+     * @return Flow of channel info items that are either cached or fetched.
+     *  This will be of the same length of the given iterable.
+     */
+    public suspend fun asInfoItems(channels: Iterable<ChannelIdentifier>): Flow<ChannelInfoItem> = flow {
+        var hasCacheMiss = false
+
+        for (channel in channels) {
+            val item = channelItemMap.get(channel) ?: (
+                suspend {
+                    val fetchedItem = fetchCacheMiss(channel)
+                    channelItemMap.put(channel, fetchedItem)
+                    requestSave()
+                    fetchedItem
+                }
+                )()
+
+            emit(item)
+        }
+    }.flowOn(Dispatchers.IO)
+
+    private suspend fun fetchCacheMiss(channel: ChannelIdentifier): ChannelInfoItem {
+        // TODO: ExtractionException
+        val service = NewPipe.getService(channel.serviceId)
+        // TODO: ParsingException
+        val channelLinkHandler = service.channelLHFactory.fromUrl(channel.url)
+        // TODO: ExtractionException
+        val extractor = service.getChannelExtractor(channelLinkHandler)
+
+        withContext(Dispatchers.IO) {
+            // TODO: ExtractionException, IOException
+            extractor.fetchPage()
+        }
+
+        return ChannelInfoItem(channel.serviceId, channel.url, extractor.name).apply {
+            description = extractor.description
+            subscriberCount = extractor.subscriberCount
+            setVerified(extractor.isVerified())
+            thumbnails = extractor.avatars
+        }
+    }
+
+    private suspend fun requestSave() {
+        if (hasPending.getAndSet(true)) return
+
+        while (hasPending.getAndSet(false)) {
+            withContext(Dispatchers.IO) {
+                // TODO: IOException, FileNotFoundException
+                FileOutputStream(PATH.toString()).use {
+                    it.write(Cbor.encodeToByteArray(serializer(), this@SubscribedChannelInfoItemCache))
+                }
+            }
+        }
+    }
+}
+
+/**
  * Container for caching videos from subscribed channels.
  * Cbor serializer requires an experimental opt in.
  *
@@ -292,7 +432,7 @@ data class SubscriptionCache private constructor(
 
         private val cache =
             MainScope().async(Dispatchers.IO) {
-                val path = Path(System.getProperty("user.home")).resolve(".cache").resolve("piptube")
+                val path = Path(System.getProperty("user.home")).resolve(".cache").resolve("piptube").resolve("kache")
                 // TODO: fail mkdirs
                 path.toFile().mkdirs()
                 FileKache(directory = path.toString(), maxSize = 100L * 1024 * 1024) {
@@ -308,6 +448,7 @@ data class SubscriptionCache private constructor(
     /**
      * Gets a list of [StreamInfoItem] that are cached.
      * There is no check for whether the streams are from channels that are currently subscribed to.
+     * The list is in reverse chronological order.
      *
      * @return List of [StreamInfoItem] that are cached.
      */
@@ -337,14 +478,15 @@ data class SubscriptionCache private constructor(
 
         return flow {
             for (channel in channels) {
+                // TODO: ExtractionException
                 val extractor = NewPipe.getService(channel.serviceId).getFeedExtractor(channel.url)
-                val unseenStreams =
-                    VideoListGenerator(extractor = extractor).unseenItems()
+                val recentStreams =
+                    VideoListGenerator(extractor = extractor).itemsFrom(0).first
                         .filterIsInstance<VideoListGenerator.VideoListItem.InfoItem<StreamInfoItem>>()
                         .map { it.item }
 
                 setMutex.withLock {
-                    seenItems.addAll(unseenStreams)
+                    seenItems.addAll(recentStreams)
                 }
 
                 emit(channel)

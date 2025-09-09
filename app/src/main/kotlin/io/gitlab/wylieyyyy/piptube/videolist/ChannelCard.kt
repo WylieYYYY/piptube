@@ -1,6 +1,7 @@
 package io.gitlab.wylieyyyy.piptube.videolist
 
 import io.gitlab.wylieyyyy.piptube.storage.ChannelIdentifier
+import io.gitlab.wylieyyyy.piptube.storage.SubscribedChannelInfoItemCache
 import io.gitlab.wylieyyyy.piptube.storage.Subscription
 import io.gitlab.wylieyyyy.piptube.storage.SubscriptionCache
 import javafx.event.Event
@@ -29,6 +30,7 @@ class ChannelCard(
     private val scope: CoroutineScope,
     private val subscription: Subscription,
     private val subscriptionCache: SubscriptionCache,
+    private val subscribedChannelInfoItemCache: SubscribedChannelInfoItemCache,
     private val navigate: suspend () -> Unit,
 ) : StackPane() {
     companion object {
@@ -85,6 +87,9 @@ class ChannelCard(
                         listOf(ChannelIdentifier(channelInfo)),
                         ignoreCooldown = true,
                     )
+                    subscribedChannelInfoItemCache.cache(channelInfo)
+                } else {
+                    subscribedChannelInfoItemCache.uncache(ChannelIdentifier(channelInfo))
                 }
             }
         button.onAction = handler { navigate() }
