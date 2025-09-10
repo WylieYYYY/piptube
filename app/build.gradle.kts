@@ -15,7 +15,7 @@ repositories {
 }
 
 dependencies {
-    implementation("com.github.teamnewpipe:NewPipeExtractor:v0.24.5")
+    implementation("com.github.teamnewpipe:NewPipeExtractor:v0.24.8")
     implementation("com.mayakapps.kache:file-kache:2.1.0")
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
     implementation("com.twelvemonkeys.imageio:imageio-jpeg:3.11.0")

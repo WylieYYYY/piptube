@@ -196,10 +196,10 @@ fun ListExtractor<out InfoItem>.asFlow() = flow<InfoItem> {
         val items =
             runCatching {
                 currentPage = nextPage()
-                currentPage.items.toTypedArray()
+                currentPage.items
             }.recoverCatching {
                 when (it) {
-                    is NothingFoundException -> arrayOf()
+                    is NothingFoundException -> listOf()
                     else -> throw it
                 }
             }.getOrThrow()
