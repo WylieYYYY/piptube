@@ -5,9 +5,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.MainScope
 import kotlinx.coroutines.channels.ClosedReceiveChannelException
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.emitAll
 import kotlinx.coroutines.flow.flow
-import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.produceIn
 import org.schabi.newpipe.extractor.InfoItem
@@ -206,6 +204,6 @@ fun ListExtractor<out InfoItem>.asFlow() = flow<InfoItem> {
                 }
             }.getOrThrow()
 
-        emitAll(flowOf(*items))
+        for (item in items) emit(item)
     }
 }.flowOn(Dispatchers.IO)

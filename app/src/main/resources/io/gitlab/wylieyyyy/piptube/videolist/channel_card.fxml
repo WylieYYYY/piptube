@@ -32,8 +32,20 @@
                      <radius><ChannelCard fx:constant="AVATAR_RADIUS" /></radius>
                   </Circle>
                   <VBox>
-                     <Label fx:id="nameLabel" text="Unknown Artist" />
-                     <Label fx:id="descriptionLabel" text="Unknown Description" />
+                     <Label fx:id="nameLabel" text="Unknown Artist">
+                        <padding>
+                           <Insets>
+                              <top>0</top>
+                              <right>0</right>
+                              <bottom><ChannelCard fx:constant="SPACING" /></bottom>
+                              <left>0</left>
+                           </Insets>
+                        </padding>
+                     </Label>
+                     <Label fx:id="subscriberCountLabel" text="Subscriber Count: Unknown" />
+                     <Label fx:id="descriptionLabel" text="Unknown Description">
+                        <prefHeight>0</prefHeight>
+                     </Label>
                   </VBox>
                </children>
             </HBox>

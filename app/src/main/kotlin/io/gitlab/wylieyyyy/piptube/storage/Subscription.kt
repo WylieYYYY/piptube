@@ -26,12 +26,14 @@ import kotlinx.serialization.encoding.Decoder
 import kotlinx.serialization.encoding.Encoder
 import org.schabi.newpipe.extractor.NewPipe
 import org.schabi.newpipe.extractor.channel.ChannelInfoItem
+import org.schabi.newpipe.extractor.exceptions.ExtractionException
 import org.schabi.newpipe.extractor.stream.StreamInfoItem
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
 import java.io.FileInputStream
 import java.io.FileNotFoundException
 import java.io.FileOutputStream
+import java.io.IOException
 import java.io.InputStream
 import java.io.ObjectInputStream
 import java.io.ObjectOutputStream
@@ -326,32 +328,40 @@ class SubscribedChannelInfoItemCache private constructor(
      *  This will be of the same length of the given iterable.
      */
     public suspend fun asInfoItems(channels: Iterable<ChannelIdentifier>): Flow<ChannelInfoItem> = flow {
-        var hasCacheMiss = false
+        suspend fun fetchCacheMissWithFallback(channel: ChannelIdentifier): ChannelInfoItem = runCatching {
+            fetchCacheMiss(channel)
+        }.onSuccess {
+            channelItemMap.put(channel, it)
+            requestSave()
+        }.recoverCatching {
+            when (it) {
+                is ExtractionException, is IOException -> {
+                    val fallbackName = channel.url.substringAfterLast('/')
+                    val fallbackItem = ChannelInfoItem(channel.serviceId, channel.url, fallbackName)
+                    fallbackItem.subscriberCount = -1L
+                    fallbackItem
+                }
+                else -> throw it
+            }
+        }.getOrThrow()
 
         for (channel in channels) {
-            val item = channelItemMap.get(channel) ?: (
-                suspend {
-                    val fetchedItem = fetchCacheMiss(channel)
-                    channelItemMap.put(channel, fetchedItem)
-                    requestSave()
-                    fetchedItem
-                }
-                )()
-
+            val item = channelItemMap.get(channel) ?: fetchCacheMissWithFallback(channel)
             emit(item)
         }
     }.flowOn(Dispatchers.IO)
 
+    /**
+     * @throws java.io.IOException
+     * @throws org.schabi.newpipe.extractor.exceptions.ExtractionException
+     * @throws org.schabi.newpipe.extractor.exceptions.ParsingException
+     */
     private suspend fun fetchCacheMiss(channel: ChannelIdentifier): ChannelInfoItem {
-        // TODO: ExtractionException
         val service = NewPipe.getService(channel.serviceId)
-        // TODO: ParsingException
         val channelLinkHandler = service.channelLHFactory.fromUrl(channel.url)
-        // TODO: ExtractionException
         val extractor = service.getChannelExtractor(channelLinkHandler)
 
         withContext(Dispatchers.IO) {
-            // TODO: ExtractionException, IOException
             extractor.fetchPage()
         }
 

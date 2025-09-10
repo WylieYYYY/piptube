@@ -133,21 +133,7 @@ class ControlPane(
             }
 
         scope.launch {
-            withClearedVideoList {
-                subscription = Subscription.fromStorageOrNew()
-                subscriptionCache = SubscriptionCache.fromCacheOrNew()
-                subscribedChannelInfoItemCache = SubscribedChannelInfoItemCache.fromCacheOrNew()
-                val page = SubscriptionPage(controller, subscription, subscriptionCache, progress)
-                GeneratorTab(
-                    TabIdentifier.SUBSCRIPTION,
-                    VideoListGenerator(
-                        seenItems =
-                        listOf(VideoListGenerator.VideoListItem.Node(page)) +
-                            subscriptionCache.seenItems().map(VideoListGenerator.VideoListItem::InfoItem),
-                        dynamicFlow = null,
-                    ),
-                )
-            }
+            initializeSubscriptionAndDisplayPage()
         }
     }
 
@@ -299,6 +285,27 @@ class ControlPane(
                 }
             }
         else -> null
+    }
+
+    private suspend fun initializeSubscriptionAndDisplayPage() {
+        withClearedVideoList {
+            subscription = Subscription.fromStorageOrNew()
+            subscriptionCache = SubscriptionCache.fromCacheOrNew()
+            subscribedChannelInfoItemCache = SubscribedChannelInfoItemCache.fromCacheOrNew()
+            val page = SubscriptionPage(controller, subscription, subscriptionCache, progress)
+            GeneratorTab(
+                TabIdentifier.SUBSCRIPTION,
+                VideoListGenerator(
+                    seenItems =
+                    listOf(VideoListGenerator.VideoListItem.Node(page)) +
+                        subscriptionCache.seenItems().map(VideoListGenerator.VideoListItem::InfoItem),
+                    dynamicFlow = null,
+                ),
+                VideoListGenerator(
+                    dynamicFlow = subscribedChannelInfoItemCache.asInfoItems(subscription.channels()),
+                ),
+            )
+        }
     }
 
     private fun calculateNewScrollVvalue(

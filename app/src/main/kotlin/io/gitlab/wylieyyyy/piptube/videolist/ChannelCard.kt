@@ -47,6 +47,8 @@ class ChannelCard(
 
     @FXML private lateinit var nameLabel: Label
 
+    @FXML private lateinit var subscriberCountLabel: Label
+
     @FXML private lateinit var descriptionLabel: Label
 
     @FXML private lateinit var subscribeButton: Button
@@ -76,7 +78,10 @@ class ChannelCard(
             }
         }
         nameLabel.text = channelInfo.name
-        descriptionLabel.text = channelInfo.description
+        if (channelInfo.subscriberCount != -1L) {
+            subscriberCountLabel.text = "Subscriber Count: ${channelInfo.subscriberCount}"
+        }
+        if (channelInfo.description != null) descriptionLabel.text = channelInfo.description
         subscribeButton.text = if (subscription.getIsSubscribed(ChannelIdentifier(channelInfo))) "-" else "+"
         subscribeButton.onAction =
             handler {
